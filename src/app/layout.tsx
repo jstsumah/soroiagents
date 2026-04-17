@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
 import { PopupBanner } from '@/components/popup-banner';
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -36,6 +37,7 @@ export default async function RootLayout({
             <Toaster />
             <PopupBanner />
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );

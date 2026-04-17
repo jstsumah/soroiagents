@@ -39,6 +39,7 @@
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.102.1",
     "@tailwindcss/typography": "^0.5.15",
+    "@vercel/analytics": "^2.0.1",
     "autoprefixer": "^10.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
