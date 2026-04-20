@@ -39,7 +39,9 @@ const formSchema = z.object({
   payment_terms: z.string().optional(),
   remarks: z.string().optional(),
 }).refine((data) => {
+    console.log("Validating refinement...", data.type, data.dmc);
     if (data.type === 'international' && !data.dmc) {
+        console.warn("DMC missing for international agent");
         return false;
     }
     return true;
@@ -64,29 +66,81 @@ function AgentProfileForm({ agent }: { agent: User }) {
       dmc: agent.dmc || '',
       payment_terms: agent.payment_terms || '',
       remarks: agent.remarks || '',
+      type: agent.type || 'local',
+      tier: agent.tier || 'Brass',
+      status: agent.status || 'active',
+      role: agent.role || 'Agent',
     },
   });
 
-  async function handleFormSubmit(values: any) {
+  const handleFormSubmit = async (values: z.infer<typeof formSchema>) => {
+    console.log("handleFormSubmit called with:", values);
     setIsSaving(true);
     try {
-      await updateUser(agent.uid, values);
-      toast({ title: "Profile Updated!", description: "Your information has been successfully saved." });
-      router.refresh();
+      console.log("Calling updateUser for UID:", agent.uid);
+      const result = await updateUser(agent.uid, values);
+      console.log("updateUser result:", result);
+      if (result.success) {
+          console.log("Save successful, notifying and redirecting...");
+          toast({ title: "Profile Updated!", description: "Your information has been successfully saved." });
+          router.push('/app/agent/dashboard');
+      } else {
+          console.error("Save failed on server:", result);
+          toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: result.toastMessage || "An error occurred while saving your profile."
+          });
+      }
     } catch (error) {
       console.error("Failed to update profile:", error);
       toast({ variant: "destructive", title: "Save Failed", description: "An error occurred while saving your profile." });
     } finally {
       setIsSaving(false);
     }
-  }
+  };
+
+  const onInvalid = (errors: any) => {
+    console.error("Form validation errors:", errors);
+    const errorList = Object.entries(errors)
+      .map(([key, value]: [string, any]) => `${key}: ${value.message}`)
+      .join("\n");
+    
+    toast({
+      variant: "destructive",
+      title: "Check Your Details",
+      description: `Please correct the following: ${errorList}`,
+    });
+  };
 
   return (
     <FormProvider {...form}>
-      <EditUserForm user={agent} onSubmit={form.handleSubmit(handleFormSubmit)}>
+      <EditUserForm 
+        user={agent} 
+        onSubmit={(e) => {
+            console.log("Native form onSubmit triggered");
+            form.handleSubmit(
+                (values) => {
+                    console.log("RHF validation SUCCESS", values);
+                    handleFormSubmit(values);
+                },
+                (errors) => {
+                    console.error("RHF validation FAILED", errors);
+                    onInvalid(errors);
+                }
+            )(e);
+        }}
+      >
         <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-          <Button type="submit" disabled={isSaving}>
+          <Button type="button" variant="outline" onClick={() => {
+              console.log("Cancel clicked, redirecting to dashboard");
+              router.push('/app/agent/dashboard');
+          }}>Cancel</Button>
+          <Button 
+            type="submit" 
+            disabled={isSaving}
+            onClick={() => console.log("Submit button DOM onClick")}
+          >
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
           </Button>

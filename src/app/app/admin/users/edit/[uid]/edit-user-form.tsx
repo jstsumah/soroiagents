@@ -140,9 +140,8 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
   );
 
   return (
-    <Form {...form}>
-      <form onSubmit={onSubmit}>
-        <div className="space-y-6">
+    <form onSubmit={onSubmit}>
+      <div className="space-y-6">
             <Card>
                 <CardHeader>
                     <CardTitle>Personal Details</CardTitle>
@@ -446,26 +445,30 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                     </CardHeader>
                     <CardContent>
                         <div className="grid md:grid-cols-2 gap-6">
-                            <FormField control={form.control} name="dmc" render={({ field }: any) => (
-                                <FormItem>
-                                <FormLabel>DMC</FormLabel>
-                                <FormControl><Input placeholder="DMC Name" {...field} /></FormControl>
-                                <FormDescription>Required for International agents.</FormDescription>
-                                <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="payment_terms" render={({ field }: any) => (
-                                <FormItem>
-                                    <FormLabel>Payment Terms</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select payment terms" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {paymentTerms.map(term => <SelectItem key={term} value={term}>{term}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                            {(isAdmin || (isAgentEditingOwnProfile && form.getValues('type') === 'international')) && (
+                                <FormField control={form.control} name="dmc" render={({ field }: any) => (
+                                    <FormItem>
+                                    <FormLabel>DMC</FormLabel>
+                                    <FormControl><Input placeholder="DMC Name" {...field} disabled={!isAdmin} /></FormControl>
+                                    <FormDescription>Required for International agents.</FormDescription>
                                     <FormMessage />
-                                </FormItem>
-                            )} />
+                                    </FormItem>
+                                )} />
+                            )}
+                            {(isAdmin || isAgentEditingOwnProfile) && (
+                                <FormField control={form.control} name="payment_terms" render={({ field }: any) => (
+                                    <FormItem>
+                                        <FormLabel>Payment Terms</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isAdmin}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select payment terms" /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                {paymentTerms.map(term => <SelectItem key={term} value={term} disabled={!isAdmin}>{term}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            )}
                              <FormField
                                 control={form.control}
                                 name="canViewUsers"
@@ -536,7 +539,6 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
             {children}
         </div>
       </form>
-    </Form>
   );
 }
 

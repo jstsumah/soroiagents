@@ -22,8 +22,8 @@ export function EmailTemplates() {
     fetchTemplates();
   }, []);
 
-  const handleSave = async (id: EmailTemplate['id'], data: Omit<EmailTemplate, 'id' | 'name' | 'placeholders'>) => {
-    await saveEmailTemplate({ id, ...data });
+  const handleSave = async (template: EmailTemplate, data: Omit<EmailTemplate, 'id' | 'name' | 'placeholders'>) => {
+    await saveEmailTemplate({ ...template, ...data });
     // Refetch to ensure we have the latest data
     const fetchedTemplates = await getEmailTemplates();
     setTemplates(fetchedTemplates);
@@ -54,7 +54,7 @@ export function EmailTemplates() {
         <TabsContent key={template.id} value={template.id}>
           <EmailTemplateForm
             template={template}
-            onSave={(data) => handleSave(template.id, data)}
+            onSave={(data) => handleSave(template, data)}
           />
         </TabsContent>
       ))}
