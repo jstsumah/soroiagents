@@ -239,14 +239,17 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
 
 
   const handleStatusChange = async (userToUpdate: User, status: Status) => {
+    console.log('[handleStatusChange] uid=', userToUpdate.uid, 'new status=', status, 'old status=', userToUpdate.status);
     const updatePayload: Partial<User> = { status };
     if (status === 'active' && userToUpdate.status !== 'active') {
         updatePayload.approvedBy = viewingUser.name;
         updatePayload.approvedAt = new Date();
     }
-    
+
     try {
-      await updateUser(userToUpdate.uid, updatePayload);
+      console.log('[handleStatusChange] updatePayload=', updatePayload);
+      const result = await updateUser(userToUpdate.uid, updatePayload);
+      console.log('[handleStatusChange] result=', result);
       // Refetch all users to get the updated approvedBy field
       const updatedUsers = await getUsers();
       setUsers((updatedUsers || []).filter(u => viewingUser?.role === 'Super Admin' || u.role !== 'Super Admin'));
@@ -296,10 +299,7 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
 
   const handleBulkUpdate = async (field: 'status' | 'tier', value: Status | Tier) => {
     const updatePayload: Partial<User> = { [field]: value };
-     if (field === 'status' && value === 'active') {
-        updatePayload.approvedBy = viewingUser.name;
-        updatePayload.approvedAt = new Date();
-    }
+     // Note: approved_by/approved_at are set automatically by updateUser when status === 'active'
 
     const updatePromises = selectedUsers.map(uid => updateUser(uid, updatePayload));
     try {

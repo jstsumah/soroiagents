@@ -97,12 +97,13 @@ export const getUsersByCompanyId = async (companyId: string): Promise<User[]> =>
 
 export const updateUser = async (uid: string, data: Partial<User>): Promise<{success: boolean, toastMessage?: string}> => {
     const profileData = mapUserToProfile(data);
-    
+    console.log('[updateUser] uid=', uid, 'data=', data, 'profileData=', profileData);
+
     // Handle approval logic
     if (data.status === 'active') {
         const adminUser = await getAuthenticatedUser();
         if (adminUser) {
-            profileData.approved_by = adminUser.name;
+            profileData.approved_by = adminUser.uid;
             profileData.approved_at = new Date().toISOString();
         }
     }
@@ -114,9 +115,11 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
         .eq('id', uid);
 
     if (error) {
-        console.error('Error updating user:', error);
+        console.error('Error updating user:', uid, error);
         return { success: false };
     }
+
+    console.log('[updateUser] Success. uid=', uid, 'profileData=', profileData);
 
     try {
         const admin = await getAuthenticatedUser();
@@ -423,7 +426,7 @@ const mapUserToProfile = (user: Partial<User>): any => {
     if (user.hasAllTierAccess !== undefined) profile.has_all_tier_access = user.hasAllTierAccess;
     if (user.last_seen !== undefined) profile.last_seen = user.last_seen.toISOString();
     if (user.approvedBy !== undefined) profile.approved_by = user.approvedBy;
-    if (user.approvedAt !== undefined) profile.approved_at = user.approvedAt.toISOString();
+    if (user.approvedAt !== undefined) profile.approved_at = user.approvedAt instanceof Date ? user.approvedAt.toISOString() : user.approvedAt;
     return profile;
 };
 

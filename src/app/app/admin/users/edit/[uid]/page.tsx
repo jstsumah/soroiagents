@@ -102,9 +102,11 @@ export default function EditUserPage({ params }: { params: { uid: string } }) {
 
     async function handleFormSubmit(values: any) {
         setIsSaving(true);
-    
+
         try {
+          console.log('[handleFormSubmit] values.status =', values.status);
           const payload: Partial<User> & {password?: string} = { ...values };
+          console.log('[handleFormSubmit] payload.status =', payload.status);
           if (user) {
             if (viewingUser?.role !== 'Super Admin' && values.tier === 'Platinum') {
                 toast({
@@ -136,6 +138,7 @@ export default function EditUserPage({ params }: { params: { uid: string } }) {
     }
 
     const attemptSubmit = async (values: any) => {
+        console.log('[attemptSubmit] values =', JSON.stringify({ ...values, password: values.password ? '***' : undefined }));
         if (!user || values.tier === user.tier) {
           handleFormSubmit(values);
           return;
