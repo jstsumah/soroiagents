@@ -11,30 +11,64 @@ const supabase = createClient();
 export function onChatSessionUpdate(sessionId: string, callback: (session: ChatSession | null) => void): () => void {
     // Helper to fetch the full session with messages
     const fetchSession = async () => {
-        const { data: sessionData, error: sessionError } = await supabase
-            .from('chat_sessions')
-            .select('*, chat_messages(*)')
-            .eq('id', sessionId)
-            .order('timestamp', { foreignTable: 'chat_messages', ascending: true })
-            .single();
-
-        if (sessionError) {
-            if (sessionError.code === 'PGRST116') {
-                callback(null);
-            } else {
-                console.error("Error fetching chat session:", sessionError);
-            }
+        console.log("[fetchSession] Starting for sessionId:", sessionId);
+        if (!sessionId) {
+            console.warn("[fetchSession] No sessionId provided");
             return;
         }
 
-        if (sessionData) {
-            const session: ChatSession = {
-                ...sessionData,
-                messages: sessionData.chat_messages || []
-            };
-            callback(session);
+        try {
+            // 1. Fetch Session properties
+            const { data: sessionData, error: sessionError } = await supabase
+                .from('chat_sessions')
+                .select('*')
+                .eq('id', sessionId)
+                .single();
+
+            if (sessionError) {
+                console.error("Error fetching chat session properties:", sessionError);
+                console.error("Error details - Code:", sessionError.code);
+                console.error("Error details - Message:", sessionError.message);
+                
+                if (sessionError.code === 'PGRST116') {
+                    console.warn("[fetchSession] Session not found (PGRST116)");
+                    callback(null);
+                }
+                return;
+            }
+
+            if (!sessionData) {
+                console.warn("[fetchSession] No data returned for session");
+                return;
+            }
+
+            console.log("[fetchSession] Session properties fetched successfully");
+
+            // 2. Fetch Messages separately
+            const { data: messagesData, error: messagesError } = await supabase
+                .from('chat_messages')
+                .select('*')
+                .eq('session_id', sessionId)
+                .order('timestamp', { ascending: true });
+
+        if (messagesError) {
+            console.error("Error fetching chat messages:", {
+                code: messagesError.code,
+                message: messagesError.message,
+                details: messagesError.details
+            });
+            // Still return the session even if messages fail
         }
-    };
+
+        const session: ChatSession = {
+            ...sessionData,
+            messages: messagesData || []
+        };
+        callback(session);
+    } catch (err: any) {
+        console.error("[fetchSession] Unexpected crash:", err);
+    }
+};
 
     // Subscribe to changes in the chat_messages table for this session
     const channel = supabase

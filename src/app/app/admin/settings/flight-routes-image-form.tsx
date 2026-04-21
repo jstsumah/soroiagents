@@ -59,7 +59,8 @@ export function FlightRoutesImageForm() {
       if (imageFile) {
         const formData = new FormData();
         formData.append('file', imageFile);
-        imageUrl = await uploadFileFromFormData(formData, `settings/flight-routes-image.${imageFile.type.split('/')[1]}`, imageFile.type);
+        formData.append('path', `settings/flight-routes-image.${imageFile.type.split('/')[1]}`);
+        imageUrl = await uploadFileFromFormData(formData);
       }
 
       await saveCompanyDetails({ flightRoutesImageUrl: imageUrl });

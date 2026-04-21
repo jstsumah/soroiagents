@@ -78,7 +78,8 @@ export function LoginBackgroundForm() {
       if (imageFile) {
         const formData = new FormData();
         formData.append('file', imageFile);
-        imageUrl = await uploadFileFromFormData(formData, `settings/login-background.${imageFile.type.split('/')[1]}`, imageFile.type);
+        formData.append('path', `settings/login-background.${imageFile.type.split('/')[1]}`);
+        imageUrl = await uploadFileFromFormData(formData);
       }
 
       await saveCompanyDetails({ 

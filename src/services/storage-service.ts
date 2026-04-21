@@ -48,12 +48,20 @@ export const uploadFileFromFormData = async (formData: FormData): Promise<string
         const file = formData.get('file');
         const path = formData.get('path');
         
-        if (!file || !(file instanceof File) || !path || typeof path !== 'string') {
-            throw new Error('Invalid or missing file/path in FormData');
+        if (!file || !path || typeof path !== 'string') {
+            throw new Error(`Missing file or path. File: ${!!file}, Path: ${path}`);
+        }
+
+        // In some environments, instanceof File might fail, so we check for essential properties
+        const isFileLike = file && typeof (file as any).arrayBuffer === 'function' && (file as any).name !== undefined;
+        
+        if (!isFileLike) {
+             throw new Error(`The provided "file" is not a valid File/Blob object. Type: ${typeof file}`);
         }
 
         const supabase = getSupabaseAdmin();
-        const arrayBuffer = await file.arrayBuffer();
+        const fileObject = file as unknown as File;
+        const arrayBuffer = await fileObject.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
         const bucketName = 'soroi';

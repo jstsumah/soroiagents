@@ -72,30 +72,34 @@ export function SupportChatbot() {
         return () => clearInterval(intervalId);
     }, [isOpen, n8nChatbotUrl]);
 
+    const INITIAL_GREETING: ChatMessage = {
+        role: 'model',
+        content: "Hello! How can I assist you today? You can ask about our services or help with resources.",
+        author: {
+            name: "Support Bot",
+            uid: "support-bot-uid"
+        }
+    };
+
+    useEffect(() => {
+        if (isOpen && messages.length === 0) {
+            setMessages([INITIAL_GREETING]);
+        }
+    }, [isOpen, messages.length]);
+
     useEffect(() => {
         if (!sessionId || !isOpen || n8nChatbotUrl) return;
 
         const unsubscribe = onChatSessionUpdate(sessionId, (sessionData) => {
             if (sessionData && sessionData.messages) {
-                if (JSON.stringify(messages) !== JSON.stringify(sessionData.messages)) {
-                    setMessages(sessionData.messages);
-                }
+                // Merge with initial greeting if needed, or just set if it contains it
+                setMessages(sessionData.messages);
             }
         });
 
         return () => unsubscribe();
-    }, [sessionId, isOpen, messages, n8nChatbotUrl]);
+    }, [sessionId, isOpen, n8nChatbotUrl]);
 
-    useEffect(() => {
-        if (isOpen && !sessionId && !n8nChatbotUrl) {
-            const startSession = async () => {
-                if (!user) return;
-                const newSessionId = await createChatSession(user.uid);
-                setSessionId(newSessionId);
-            };
-            startSession();
-        }
-    }, [isOpen, sessionId, user, n8nChatbotUrl]);
 
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -105,15 +109,23 @@ export function SupportChatbot() {
 
 
     const handleSend = async () => {
-        if (input.trim() === '' || isLoading || !sessionId || !user) return;
+        if (input.trim() === '' || isLoading || !user) return;
 
         const userMessageContent = input.trim();
         setInput('');
         setIsLoading(true);
         
         try {
+            let currentSessionId = sessionId;
+            
+            // Create session on-demand if it doesn't exist
+            if (!currentSessionId) {
+                currentSessionId = await createChatSession(user.uid);
+                setSessionId(currentSessionId);
+            }
+
             await supportChat({
-                sessionId: sessionId,
+                sessionId: currentSessionId,
                 message: userMessageContent,
             });
 

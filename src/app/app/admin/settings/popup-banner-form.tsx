@@ -107,7 +107,8 @@ export function PopupBannerForm() {
       if (imageFile) {
         const formData = new FormData();
         formData.append('file', imageFile);
-        imageUrlToSave = await uploadFileFromFormData(formData, `settings/popup-banner-image.${imageFile.type.split('/')[1]}`, imageFile.type);
+        formData.append('path', `settings/popup-banner-image.${imageFile.type.split('/')[1]}`);
+        imageUrlToSave = await uploadFileFromFormData(formData);
       }
       
       const settingsToSave = { ...values, imageUrl: imageUrlToSave, imageFile: undefined };

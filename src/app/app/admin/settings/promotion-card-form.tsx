@@ -95,13 +95,15 @@ export function PromotionCardForm() {
       if (imageFile) {
         const formData = new FormData();
         formData.append('file', imageFile);
-        imageUrl = await uploadFileFromFormData(formData, `settings/promotion-card-image.${imageFile.type.split('/')[1]}`, imageFile.type);
+        formData.append('path', `settings/promotion-card-image.${imageFile.type.split('/')[1]}`);
+        imageUrl = await uploadFileFromFormData(formData);
       }
 
       if (values.linkType === 'file' && linkFile) {
           const fileFormData = new FormData();
           fileFormData.append('file', linkFile);
-          linkUrl = await uploadFileFromFormData(fileFormData, `settings/promotion-file-${linkFile.name}`, linkFile.type);
+          fileFormData.append('path', `settings/promotion-file-${linkFile.name}`);
+          linkUrl = await uploadFileFromFormData(fileFormData);
       }
 
       await savePromotionCardSettings({ 
