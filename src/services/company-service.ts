@@ -156,12 +156,12 @@ export const getCompany = async (id: string): Promise<Company | null> => {
 export const addCompany = async (data: Omit<Company, 'id'>): Promise<string> => {
     const duplicateCheck = await isDuplicateCompany(data);
     if (duplicateCheck) {
-        throw new Error(`A company with the same ${duplicateCheck.field.replace('_', ' ')} already exists: "${duplicateCheck.value}".`);
+        throw new Error("This company already exists. Please contact support to be linked to this company.");
     }
 
     const dbData = mapCompanyToDb(data);
-    const supabase = await createClient();
-    const { data: insertedData, error } = await supabase
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data: insertedData, error } = await supabaseAdmin
         .from('companies')
         .insert(dbData)
         .select()
@@ -193,8 +193,8 @@ export const updateCompany = async (id: string, data: Partial<Omit<Company, 'id'
     }
 
     const dbData = mapCompanyToDb(data);
-    const supabase = await createClient();
-    const { error } = await supabase
+    const supabaseAdmin = getSupabaseAdmin();
+    const { error } = await supabaseAdmin
         .from('companies')
         .update(dbData)
         .eq('id', id);
@@ -220,10 +220,10 @@ export const deleteCompany = async (id: string): Promise<void> => {
     const companyData = await getCompany(id);
     if (!companyData) return;
 
-    const supabase = await createClient();
+    const supabaseAdmin = getSupabaseAdmin();
 
     // First, clear company_id references in profiles (foreign key constraint)
-    const { error: profileError } = await supabase
+    const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .update({ company_id: null })
         .eq('company_id', id);
@@ -245,7 +245,7 @@ export const deleteCompany = async (id: string): Promise<void> => {
         }
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
         .from('companies')
         .delete()
         .eq('id', id);

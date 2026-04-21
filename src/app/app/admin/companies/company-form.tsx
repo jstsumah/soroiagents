@@ -43,22 +43,22 @@ const websiteRegex = new RegExp(
 );
 
 const formSchema = z.object({
-  name: z.string().min(3, "Company name is required."),
-  phone: z.string().regex(phoneRegex, 'Phone number must be in international format (e.g., +254712345678).').optional().or(z.literal('')),
+  name: z.string().min(3, "Company name is required (min 3 characters)."),
+  phone: z.string().regex(phoneRegex, 'Phone number is required in international format (e.g., +254712345678).'),
   website_url: z.string().regex(websiteRegex, 'Please enter a valid URL (e.g., yourdomain.com).').or(z.literal('')),
-  street_address: z.string().optional(),
-  city: z.string().optional(),
-  country: z.string().optional(),
+  street_address: z.string().min(1, "Street address is required."),
+  city: z.string().min(1, "City is required."),
+  country: z.string().min(1, "Country is required."),
   postal_address: z.string().optional(),
   zip_code: z.string().optional(),
   vat_no: z.string().optional(),
-  company_reg: z.string().optional(),
+  company_reg: z.string().min(1, "Company registration number is required."),
   tra_license: z.string().optional(),
   new_contract_file: z.any().optional(),
   company_reg_doc_file: z.any().optional(),
   tra_license_doc_file: z.any().optional(),
   signed_contracts: z.array(signedContractSchema).optional(),
-  company_reg_doc: signedContractSchema.optional().nullable(),
+  company_reg_doc: z.any().refine((val) => val !== null && val !== undefined, "Company registration document is required."),
   tra_license_doc: signedContractSchema.optional().nullable(),
 });
 
@@ -240,7 +240,10 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
       ) : (
         <FormField control={form.control} name={formName} render={({ field: { onChange, ...fieldProps } }) => (
           <FormItem>
-            <FormLabel>{label}</FormLabel>
+            <FormLabel className="flex items-center gap-1">
+              {label}
+              {formName === "company_reg_doc_file" && <span className="text-destructive">*</span>}
+            </FormLabel>
             <FormControl><Input type="file" accept="image/*,.pdf" onChange={(e: any) => e.target.files?.[0] && onFileChange(e.target.files[0])} {...fieldProps} /></FormControl>
             <FormMessage />
           </FormItem>
@@ -259,8 +262,8 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <FormField control={form.control} name="name" render={({ field }: any) => (<FormItem><FormLabel>Company Name</FormLabel><FormControl><Input placeholder="e.g., Safari Ventures" {...field} onChange={(e) => field.onChange(toTitleCase(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="phone" render={({ field }: any) => (<FormItem><FormLabel>Company Phone</FormLabel><FormControl><Input 
+                    <FormField control={form.control} name="name" render={({ field }: any) => (<FormItem><FormLabel>Company Name <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="e.g., Safari Ventures" {...field} onChange={(e) => field.onChange(toTitleCase(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="phone" render={({ field }: any) => (<FormItem><FormLabel>Company Phone <span className="text-destructive">*</span></FormLabel><FormControl><Input 
                         placeholder="e.g., +254712345678" 
                         {...field}
                         onChange={(e) => field.onChange(e.target.value.replace(/\s/g, '').replace(/\./g, ''))}
@@ -284,11 +287,11 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
                             </FormItem>
                         )} 
                     />
-                    <FormField control={form.control} name="street_address" render={({ field }: any) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input placeholder="e.g., 123 Safari Lane" {...field} value={field.value ?? ''} onChange={(e) => field.onChange(toTitleCase(e.target.value))}/></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="street_address" render={({ field }: any) => (<FormItem><FormLabel>Street Address <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="e.g., 123 Safari Lane" {...field} value={field.value ?? ''} onChange={(e) => field.onChange(toTitleCase(e.target.value))}/></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="postal_address" render={({ field }: any) => (<FormItem><FormLabel>Postal Address</FormLabel><FormControl><Input placeholder="e.g., P.O. Box 100" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="city" render={({ field }: any) => (<FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="e.g., Nairobi" {...field} value={field.value ?? ''} onChange={(e) => field.onChange(toTitleCase(e.target.value))}/></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="city" render={({ field }: any) => (<FormItem><FormLabel>City <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="e.g., Nairobi" {...field} value={field.value ?? ''} onChange={(e) => field.onChange(toTitleCase(e.target.value))}/></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="zip_code" render={({ field }: any) => (<FormItem><FormLabel>Zip/Postal Code</FormLabel><FormControl><Input placeholder="e.g., 00100" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="country" render={({ field }: any) => (<FormItem><FormLabel>Country</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a country" /></SelectTrigger></FormControl><SelectContent>{countries.map(country => (<SelectItem key={country} value={country}>{country}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="country" render={({ field }: any) => (<FormItem><FormLabel>Country <span className="text-destructive">*</span></FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a country" /></SelectTrigger></FormControl><SelectContent>{countries.map(country => (<SelectItem key={country} value={country}>{country}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="vat_no" render={({ field }: any) => (<FormItem><FormLabel>VAT No.</FormLabel><FormControl><Input placeholder="e.g., P012345678X" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
             </CardContent>
@@ -302,7 +305,7 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
             <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
                     <div className="space-y-2">
-                        <FormField control={form.control} name="company_reg" render={({ field }: any) => (<FormItem><FormLabel>Company Registration No.</FormLabel><FormControl><Input placeholder="e.g., C12345" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="company_reg" render={({ field }: any) => (<FormItem><FormLabel>Company Registration No. <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="e.g., C12345" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <DocumentUploadField
                             label="Company Registration Document"
                             formName="company_reg_doc_file"

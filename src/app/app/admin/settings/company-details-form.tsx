@@ -27,12 +27,12 @@ const phoneRegex = new RegExp(
 );
 
 const formSchema = z.object({
-  companyName: z.string().min(2, "Company name is required.").optional(),
-  contactEmail: z.string().email("Invalid email address.").optional().or(z.literal('')),
-  contactPhone: z.string().regex(phoneRegex, 'Phone number must be in international format (e.g., +254712345678).').optional().or(z.literal('')),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  country: z.string().optional(),
+  companyName: z.string().min(2, "Company name is required."),
+  contactEmail: z.string().email("Invalid email address."),
+  contactPhone: z.string().regex(phoneRegex, 'Phone number is required in international format (e.g., +254712345678).'),
+  address: z.string().min(1, "Street address is required."),
+  city: z.string().min(1, "City is required."),
+  country: z.string().min(1, "Country is required."),
   reservationsEmail: z.string().email("Invalid email address.").optional().or(z.literal('')),
   reservationsPhone: z.string().regex(phoneRegex, 'Phone number must be in international format (e.g., +254712345678).').optional().or(z.literal('')),
   salesMarketingEmail: z.string().email("Invalid email address.").optional().or(z.literal('')),
@@ -134,7 +134,7 @@ export function CompanyDetailsForm() {
                         name="companyName"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Company Name</FormLabel>
+                            <FormLabel>Company Name <span className="text-destructive">*</span></FormLabel>
                             <FormControl>
                                 <Input placeholder="Your Company Name" {...field} />
                             </FormControl>
@@ -148,7 +148,7 @@ export function CompanyDetailsForm() {
                             name="contactEmail"
                             render={({ field }) => (
                             <FormItem>
-                                <FormLabel>General Email</FormLabel>
+                                <FormLabel>General Email <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="support@yourcompany.com" 
@@ -166,7 +166,7 @@ export function CompanyDetailsForm() {
                             name="contactPhone"
                             render={({ field }) => (
                             <FormItem>
-                                <FormLabel>General Phone</FormLabel>
+                                <FormLabel>General Phone <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="+254712345678" 
@@ -193,7 +193,7 @@ export function CompanyDetailsForm() {
                         name="address"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Street Address</FormLabel>
+                            <FormLabel>Street Address <span className="text-destructive">*</span></FormLabel>
                             <FormControl>
                                 <Input placeholder="123 Main St" {...field} onChange={(e) => field.onChange(toTitleCase(e.target.value))} />
                             </FormControl>
@@ -207,7 +207,7 @@ export function CompanyDetailsForm() {
                             name="city"
                             render={({ field }) => (
                             <FormItem>
-                                <FormLabel>City</FormLabel>
+                                <FormLabel>City <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
                                     <Input placeholder="New York" {...field} onChange={(e) => field.onChange(toTitleCase(e.target.value))} />
                                 </FormControl>
@@ -220,7 +220,7 @@ export function CompanyDetailsForm() {
                             name="country"
                             render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Country</FormLabel>
+                                <FormLabel>Country <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
                                     <Input placeholder="USA" {...field} />
                                 </FormControl>
