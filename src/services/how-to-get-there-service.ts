@@ -17,7 +17,7 @@ export const getLocations = async (): Promise<HowToGetThereLocation[]> => {
         console.error('Error fetching locations:', error);
         return [];
     }
-    return (data || []) as HowToGetThereLocation[];
+    return (data || []).map(mapDbToLocation);
 };
 
 export const getLocation = async (id: string): Promise<HowToGetThereLocation | null> => {
@@ -33,14 +33,15 @@ export const getLocation = async (id: string): Promise<HowToGetThereLocation | n
         console.error(`Error fetching location ${id}:`, error);
         throw error;
     }
-    return data as HowToGetThereLocation;
+    return data ? mapDbToLocation(data) : null;
 };
 
 export const addLocation = async (data: Omit<HowToGetThereLocation, 'id'>): Promise<string> => {
+    const dbData = mapLocationToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { data: insertedData, error } = await supabaseAdmin
         .from('how_to_get_there_locations')
-        .insert([data])
+        .insert([dbData])
         .select()
         .single();
 
@@ -67,10 +68,11 @@ export const addLocation = async (data: Omit<HowToGetThereLocation, 'id'>): Prom
 };
 
 export const updateLocation = async (id: string, data: Partial<HowToGetThereLocation>): Promise<void> => {
+    const dbData = mapLocationToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
         .from('how_to_get_there_locations')
-        .update(data)
+        .update(dbData)
         .eq('id', id);
 
     if (error) {
@@ -124,4 +126,25 @@ export const deleteLocation = async (id: string): Promise<void> => {
     } catch (e) {
         console.error('Could not log location deletion activity:', e);
     }
+};
+
+const mapDbToLocation = (db: any): HowToGetThereLocation => ({
+    id: db.id,
+    name: db.name,
+    mapUrl: db.map_url,
+    flights: db.flights || [],
+    trains: db.trains || [],
+    roads: db.roads || [],
+    tier_access: db.tier_access || [],
+});
+
+const mapLocationToDb = (location: Partial<HowToGetThereLocation>): any => {
+    const db: any = {};
+    if (location.name !== undefined) db.name = location.name;
+    if (location.mapUrl !== undefined) db.map_url = location.mapUrl;
+    if (location.flights !== undefined) db.flights = location.flights;
+    if (location.trains !== undefined) db.trains = location.trains;
+    if (location.roads !== undefined) db.roads = location.roads;
+    if (location.tier_access !== undefined) db.tier_access = location.tier_access;
+    return db;
 };

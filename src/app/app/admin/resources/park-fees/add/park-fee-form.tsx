@@ -66,17 +66,30 @@ export function ParkFeeForm({ parkFee, userType }: ParkFeeFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
+        // Explicitly map data to strip react-hook-form internal tracking fields
+        // before passing to server actions (avoids "Maximum array nesting exceeded")
+        const cleanData: Omit<ParkFee, 'id'> = {
+            location: values.location,
+            note: values.note,
+            user_type: values.user_type,
+            fees: values.fees.map(f => ({
+                label: f.label,
+                adult: Number(f.adult),
+                child: Number(f.child),
+            })),
+        };
+
         if (isEditMode && parkFee) {
-            await updateParkFee(parkFee.id, values);
+            await updateParkFee(parkFee.id, cleanData);
             toast({
                 title: "Park Fee Updated!",
-                description: `The park fee for ${values.location} has been successfully saved.`,
+                description: `The park fee for ${cleanData.location} has been successfully saved.`,
             });
         } else {
-            await addParkFee(values);
+            await addParkFee(cleanData);
             toast({
                 title: "Park Fee Added!",
-                description: `The park fee for ${values.location} has been successfully created.`,
+                description: `The park fee for ${cleanData.location} has been successfully created.`,
             });
         }
         router.push('/app/admin/resources/park-fees');

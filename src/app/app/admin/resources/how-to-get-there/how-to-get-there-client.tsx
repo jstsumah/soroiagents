@@ -37,8 +37,8 @@ export function HowToGetThereClient({ data, flightRoutesImageUrl }: HowToGetTher
                 <Image
                   src={location.mapUrl}
                   alt={`Map of ${location.name}`}
-                  layout="fill"
-                  objectFit="cover"
+                  fill
+                  className="object-cover"
                   referrerPolicy="no-referrer"
                   unoptimized
                   data-ai-hint={`kenya map ${location.name}`}
@@ -58,8 +58,8 @@ export function HowToGetThereClient({ data, flightRoutesImageUrl }: HowToGetTher
                             <Image
                                 src={flightRoutesImageUrl}
                                 alt="Flight Routes Map"
-                                layout="fill"
-                                objectFit="contain"
+                                fill
+                                className="object-contain"
                                 referrerPolicy="no-referrer"
                                 unoptimized
                                 data-ai-hint="kenya flight map"

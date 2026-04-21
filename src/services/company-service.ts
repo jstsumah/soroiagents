@@ -8,6 +8,82 @@ import { logActivity } from './audit-log-service';
 
 import { deleteFile, uploadFile } from './storage-service';
 
+export const importCompanies = async (
+    companies: Partial<Company>[]
+): Promise<{ successCount: number; skippedCount: number; errors: { company: Partial<Company>; error: string }[] }> => {
+    const supabaseAdmin = getSupabaseAdmin();
+    const errors: { company: Partial<Company>; error: string }[] = [];
+    let successCount = 0;
+    let skippedCount = 0;
+
+    const toDb = (company: Partial<Company>): Record<string, unknown> => {
+        const db: Record<string, unknown> = {};
+        if (company.name !== undefined) db.name = company.name;
+        if (company.phone !== undefined) db.phone = company.phone;
+        if (company.website_url !== undefined) db.website_url = company.website_url;
+        if (company.company_reg !== undefined) db.company_reg = company.company_reg;
+        if (company.company_reg_doc !== undefined) db.company_reg_doc = company.company_reg_doc;
+        if (company.tra_license !== undefined) db.tra_license = company.tra_license;
+        if (company.tra_license_doc !== undefined) db.tra_license_doc = company.tra_license_doc;
+        if (company.street_address !== undefined) db.street_address = company.street_address;
+        if (company.city !== undefined) db.city = company.city;
+        if (company.country !== undefined) db.country = company.country;
+        if (company.postal_address !== undefined) db.postal_address = company.postal_address;
+        if (company.zip_code !== undefined) db.zip_code = company.zip_code;
+        if (company.vat_no !== undefined) db.vat_no = company.vat_no;
+        if (company.dmc !== undefined) db.dmc = company.dmc;
+        return db;
+    };
+
+    for (let i = 0; i < companies.length; i++) {
+        const company = companies[i];
+
+        if (!company.name || typeof company.name !== 'string' || company.name.trim().length === 0) {
+            errors.push({ company, error: 'Company name is required.' });
+            continue;
+        }
+
+        // Check for duplicates by name
+        const { data: existing } = await supabaseAdmin
+            .from('companies')
+            .select('id')
+            .ilike('name', company.name.trim())
+            .maybeSingle();
+
+        if (existing) {
+            skippedCount++;
+            continue;
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from('companies')
+            .insert(toDb(company))
+            .select()
+            .single();
+
+        if (error) {
+            errors.push({ company, error: error.message });
+        } else {
+            successCount++;
+            try {
+                const user = await getAuthenticatedUser();
+                if (user) {
+                    await logActivity({
+                        userId: user.uid,
+                        userName: user.name,
+                        action: 'company.create',
+                        details: { companyId: data.id, companyName: company.name }
+                    });
+                }
+            } catch (e) {
+                console.error("Audit log failed for company import:", e);
+            }
+        }
+    }
+
+    return { successCount, skippedCount, errors };
+};
+
 const isDuplicateCompany = async (company: Partial<Company>, excludeId?: string): Promise<{ isDuplicate: boolean; field: string; value: string } | null> => {
     const uniqueFields: (keyof Company)[] = ['name', 'phone', 'website_url', 'vat_no', 'company_reg', 'tra_license'];
     const supabase = await createClient();
@@ -146,6 +222,14 @@ export const deleteCompany = async (id: string): Promise<void> => {
 
     const supabase = await createClient();
 
+    // First, clear company_id references in profiles (foreign key constraint)
+    const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ company_id: null })
+        .eq('company_id', id);
+
+    if (profileError) throw profileError;
+
     // Delete associated documents
     if (companyData.company_reg_doc?.url) {
         await deleteFile(companyData.company_reg_doc.url).catch(e => console.error('Error deleting company_reg_doc:', e));
@@ -180,6 +264,39 @@ export const deleteCompany = async (id: string): Promise<void> => {
         }
     } catch(e) {
         console.error("Audit log failed for company deletion:", e);
+    }
+};
+
+export const deleteCompanies = async (ids: string[]): Promise<void> => {
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // First, clear company_id references in profiles (foreign key constraint)
+    const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({ company_id: null })
+        .in('company_id', ids);
+
+    if (profileError) throw profileError;
+
+    const { error } = await supabaseAdmin
+        .from('companies')
+        .delete()
+        .in('id', ids);
+
+    if (error) throw error;
+
+    try {
+        const user = await getAuthenticatedUser();
+        if (user) {
+            await logActivity({
+                userId: user.uid,
+                userName: user.name,
+                action: 'company.delete',
+                details: { companyIds: ids, count: ids.length }
+            });
+        }
+    } catch (e) {
+        console.error("Audit log failed for bulk company deletion:", e);
     }
 };
 

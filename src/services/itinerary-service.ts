@@ -33,7 +33,7 @@ export const getItineraries = async (): Promise<PackagedItinerary[]> => {
         from += step;
     }
 
-    return (allData || []) as PackagedItinerary[];
+    return (allData || []).map(mapDbToItinerary);
 };
 
 export const getItinerary = async (id: string): Promise<PackagedItinerary | null> => {
@@ -49,15 +49,16 @@ export const getItinerary = async (id: string): Promise<PackagedItinerary | null
         console.error(`Error fetching itinerary ${id}:`, error);
         throw error;
     }
-    return data as PackagedItinerary;
+    return data ? mapDbToItinerary(data) : null;
 };
 
 export const addItinerary = async (data: Omit<PackagedItinerary, 'id'>): Promise<string> => {
+    const dbData = mapItineraryToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { data: insertedData, error } = await supabaseAdmin
         .from('packaged_itineraries')
         .insert([{
-            ...data,
+            ...dbData,
             featured: data.featured || false
         }])
         .select()
@@ -85,10 +86,11 @@ export const addItinerary = async (data: Omit<PackagedItinerary, 'id'>): Promise
 };
 
 export const updateItinerary = async (id: string, data: Partial<PackagedItinerary>): Promise<void> => {
+    const dbData = mapItineraryToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
         .from('packaged_itineraries')
-        .update(data)
+        .update(dbData)
         .eq('id', id);
 
     if (error) {
@@ -155,4 +157,33 @@ export const deleteItinerary = async (id: string): Promise<void> => {
     } catch (e) {
         console.error('Could not log itinerary deletion activity:', e);
     }
+};
+
+const mapDbToItinerary = (db: any): PackagedItinerary => ({
+    id: db.id,
+    title: db.title,
+    commissionInfo: db.commission_info,
+    description: db.description,
+    notes: db.notes,
+    packages: db.packages || [],
+    tier_access: db.tier_access || [],
+    user_type_access: db.user_type_access || [],
+    uploaded_at: new Date(db.uploaded_at),
+    featured: db.featured,
+    isNetPackage: db.is_net_package,
+});
+
+const mapItineraryToDb = (itinerary: Partial<PackagedItinerary>): any => {
+    const db: any = {};
+    if (itinerary.title !== undefined) db.title = itinerary.title;
+    if (itinerary.commissionInfo !== undefined) db.commission_info = itinerary.commissionInfo;
+    if (itinerary.description !== undefined) db.description = itinerary.description;
+    if (itinerary.notes !== undefined) db.notes = itinerary.notes;
+    if (itinerary.packages !== undefined) db.packages = itinerary.packages;
+    if (itinerary.tier_access !== undefined) db.tier_access = itinerary.tier_access;
+    if (itinerary.user_type_access !== undefined) db.user_type_access = itinerary.user_type_access;
+    if (itinerary.uploaded_at !== undefined) db.uploaded_at = itinerary.uploaded_at.toISOString();
+    if (itinerary.featured !== undefined) db.featured = itinerary.featured;
+    if (itinerary.isNetPackage !== undefined) db.is_net_package = itinerary.isNetPackage;
+    return db;
 };

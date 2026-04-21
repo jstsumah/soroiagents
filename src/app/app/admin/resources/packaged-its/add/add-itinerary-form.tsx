@@ -27,7 +27,7 @@ import type { PackagedItinerary, UserType, ItineraryPackage, TravelLink } from "
 import { addItinerary, updateItinerary } from "@/services/itinerary-service";
 import * as React from 'react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { uploadFile } from "@/services/storage-service";
+import { uploadFileFromFormData } from "@/services/storage-service";
 
 const USER_TYPES: UserType[] = ['local', 'international'];
 
@@ -120,18 +120,11 @@ const ItineraryFormComponent = ({ itinerary }: ItineraryFormProps) => {
     name: "packages",
   });
   
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-    });
-  }
-
   const uploadFileAndGetURL = async (file: File, path: string): Promise<string> => {
-    const base64 = await fileToBase64(file);
-    return await uploadFile(base64, path, file.type);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
+    return await uploadFileFromFormData(formData);
   };
 
 
@@ -167,14 +160,17 @@ const ItineraryFormComponent = ({ itinerary }: ItineraryFormProps) => {
         })
       );
       
-      const itineraryData = {
-          ...values,
-          packages: processedPackages,
-          tier_access: values.tier_access as any,
-          user_type_access: values.user_type_access as any,
+      const itineraryData: Omit<PackagedItinerary, 'id'> = {
+          title: values.title,
+          commissionInfo: values.commissionInfo,
+          description: values.description,
           notes: values.notes || "",
           featured: values.featured || false,
           isNetPackage: values.isNetPackage || false,
+          packages: processedPackages,
+          tier_access: values.tier_access as any,
+          user_type_access: values.user_type_access as any,
+          uploaded_at: isEditMode && itinerary ? itinerary.uploaded_at : new Date(),
       };
 
 
@@ -185,7 +181,7 @@ const ItineraryFormComponent = ({ itinerary }: ItineraryFormProps) => {
             description: "The packaged itinerary has been successfully updated.",
           });
       } else {
-        await addItinerary({...itineraryData, uploaded_at: new Date() });
+        await addItinerary(itineraryData);
         toast({
             title: "Itinerary Added!",
             description: "The new packaged itinerary has been successfully created.",

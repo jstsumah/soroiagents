@@ -20,10 +20,11 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ArrowUpDown } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, Trash2 } from "lucide-react";
 import type { Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type SortConfig = {
   key: keyof Company | null;
@@ -33,11 +34,15 @@ type SortConfig = {
 interface CompanyTableProps {
   companies: Company[];
   onDeleteRequest: (company: Company) => void;
+  onBulkDeleteRequest: (companies: Company[]) => void;
   onSort: (key: keyof Company) => void;
   sortConfig: SortConfig;
+  selectedCompanyIds: Set<string>;
+  onSelectAll: (checked: boolean) => void;
+  onSelectOne: (id: string, checked: boolean) => void;
 }
 
-export function CompanyTable({ companies, onDeleteRequest, onSort, sortConfig }: CompanyTableProps) {
+export function CompanyTable({ companies, onDeleteRequest, onBulkDeleteRequest, onSort, sortConfig, selectedCompanyIds, onSelectAll, onSelectOne }: CompanyTableProps) {
     const router = useRouter();
 
     const SortableHeader = ({ tKey, label }: { tKey: keyof Company, label: string }) => {
@@ -57,9 +62,32 @@ export function CompanyTable({ companies, onDeleteRequest, onSort, sortConfig }:
   
   return (
     <div className="rounded-md border bg-card">
+      {selectedCompanyIds.size > 0 && (
+        <div className="flex items-center gap-2 bg-muted/50 p-2">
+          <span className="text-sm text-muted-foreground">
+            {selectedCompanyIds.size} selected
+          </span>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onBulkDeleteRequest(companies.filter(c => selectedCompanyIds.has(c.id)))}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete Selected ({selectedCompanyIds.size})
+          </Button>
+        </div>
+      )}
       <Table>
         <TableHeader>
           <TableRow className="bg-primary hover:bg-primary/90">
+            <TableHead className="pl-4 text-primary-foreground font-semibold">
+              <Checkbox
+                checked={companies.length > 0 && selectedCompanyIds.size === companies.length}
+                onCheckedChange={(checked) => onSelectAll(!!checked)}
+                aria-label="Select all"
+                className="border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary"
+              />
+            </TableHead>
             <SortableHeader tKey="name" label="Name" />
             <SortableHeader tKey="phone" label="Phone" />
             <SortableHeader tKey="website_url" label="Website" />
@@ -71,7 +99,14 @@ export function CompanyTable({ companies, onDeleteRequest, onSort, sortConfig }:
         <TableBody>
           {companies.length ? (
             companies.map((company) => (
-              <TableRow key={company.id}>
+              <TableRow key={company.id} data-state={selectedCompanyIds.has(company.id) && "selected"}>
+                <TableCell className="pl-4">
+                  <Checkbox
+                    checked={selectedCompanyIds.has(company.id)}
+                    onCheckedChange={(checked) => onSelectOne(company.id, !!checked)}
+                    aria-label={`Select ${company.name}`}
+                  />
+                </TableCell>
                 <TableCell className="font-medium">
                   <Link href={`/app/admin/companies/view/${company.id}`} className="hover:underline">
                     {company.name}
@@ -108,7 +143,7 @@ export function CompanyTable({ companies, onDeleteRequest, onSort, sortConfig }:
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
+              <TableCell colSpan={7} className="h-24 text-center">
                 No companies found.
               </TableCell>
             </TableRow>

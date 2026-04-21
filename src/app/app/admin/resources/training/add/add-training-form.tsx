@@ -29,7 +29,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { TIERS } from "@/lib/constants";
 import type { TrainingCategory, TrainingResource, Tier } from "@/lib/types";
-import { uploadFile } from "@/services/storage-service";
+import { uploadFileFromFormData } from "@/services/storage-service";
 import { addTrainingResource, updateTrainingResource } from "@/services/training-resource-service";
 import { useTransition } from "react";
 
@@ -81,18 +81,11 @@ export function AddTrainingForm({ trainingResource }: AddTrainingFormProps) {
     },
   });
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-    });
-  }
-
   const uploadFileAndGetURL = async (file: File, path: string): Promise<string> => {
-    const base64 = await fileToBase64(file);
-    return await uploadFile(base64, path, file.type);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
+    return await uploadFileFromFormData(formData);
   };
 
   async function onSubmit(values: z.infer<typeof baseSchema>) {

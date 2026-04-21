@@ -27,9 +27,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { addProperty, updateProperty } from "@/services/property-service";
+import { addProperty, updateProperty, uploadPropertyImage } from "@/services/property-service";
 import type { Property } from "@/lib/types";
-import { uploadFile } from "@/services/storage-service";
 import * as React from 'react';
 import Image from "next/image";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -127,7 +126,7 @@ const AddPropertyFormComponent = ({ property }: AddPropertyFormProps) => {
 
   const uploadFileAndGetURL = async (file: File, path: string): Promise<string> => {
     const base64 = await fileToBase64(file);
-    return await uploadFile(base64, path, file.type);
+    return await uploadPropertyImage(base64, path, file.type);
   };
   
   const removeExistingImage = (index: number) => {
@@ -154,26 +153,27 @@ const AddPropertyFormComponent = ({ property }: AddPropertyFormProps) => {
 
       const finalImageUrls = [...(values.existingImages || []), ...newImageUrls];
 
-      const propertyData: Omit<Property, 'id'> = {
-          name: values.name,
-          type: values.type,
-          location: values.location,
-          description: values.description,
-          images: finalImageUrls, 
-          wetuIbrochureUrl: values.wetuIbrochureUrl,
-          total_rooms: values.total_rooms,
-          room_types: values.room_types,
-          facilities: values.facilities.split(',').map(s => s.trim()),
-          amenities: values.amenities.split(',').map(s => s.trim()),
-          activities: values.activities.split(',').map(s => s.trim()),
-          featured: values.featured,
+      // Send only flat data with all arrays pre-stringified
+      const flatDeepData = {
+        name: values.name,
+        type: values.type,
+        location: values.location,
+        description: values.description,
+        wetuIbrochureUrl: values.wetuIbrochureUrl || '',
+        total_rooms: values.total_rooms,
+        featured: values.featured,
+        images_json: JSON.stringify(finalImageUrls),
+        room_types_json: JSON.stringify(values.room_types),
+        facilities: values.facilities,
+        amenities: values.amenities,
+        activities: values.activities,
       };
-    
+
       if (isEditMode && property) {
-        await updateProperty(property.id, propertyData);
+        await updateProperty(property.id, flatDeepData as any);
         toast({ title: "Property Updated!", description: "The property has been successfully saved." });
       } else {
-        await addProperty(propertyData);
+        await addProperty(flatDeepData as any);
         toast({ title: "Property Added!", description: "The new property has been successfully created." });
       }
       

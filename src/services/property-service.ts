@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Property } from '@/lib/types';
 import { logActivity } from './audit-log-service';
 import { getAuthenticatedUser } from './auth-service';
-import { deleteFile } from './storage-service';
+import { deleteFile, uploadFile } from './storage-service';
 
 export const getProperties = async (): Promise<Property[]> => {
     const supabaseAdmin = getSupabaseAdmin();
@@ -39,8 +39,9 @@ export const getProperty = async (id: string): Promise<Property | null> => {
     return data ? mapDbToProperty(data) : null;
 };
 
-export const addProperty = async (data: Omit<Property, 'id'>): Promise<string> => {
+export const addProperty = async (data: any): Promise<string> => {
     const user = await getAuthenticatedUser();
+
     const dbData = mapPropertyToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { data: insertedData, error } = await supabaseAdmin
@@ -63,8 +64,9 @@ export const addProperty = async (data: Omit<Property, 'id'>): Promise<string> =
     return insertedData.id;
 };
 
-export const updateProperty = async (id: string, data: Partial<Property>): Promise<void> => {
+export const updateProperty = async (id: string, data: any): Promise<void> => {
     const user = await getAuthenticatedUser();
+
     const dbData = mapPropertyToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
@@ -157,6 +159,14 @@ export const searchProperties = async (searchQuery: string): Promise<Partial<Pro
     return data || [];
 }
 
+/**
+ * Uploads a property image file from a client component (via server action).
+ * This is a wrapper function to handle file uploads safely from the client.
+ */
+export const uploadPropertyImage = async (base64: string, filePath: string, mimeType: string): Promise<string> => {
+    return uploadFile(base64, filePath, mimeType);
+};
+
 const mapDbToProperty = (db: any): Property => ({
     id: db.id,
     name: db.name,
@@ -174,19 +184,54 @@ const mapDbToProperty = (db: any): Property => ({
     created_at: new Date(db.created_at)
 });
 
-const mapPropertyToDb = (prop: Partial<Property>): any => {
+const mapPropertyToDb = (prop: Partial<Property> & { room_types_json?: string; facilities_json?: string; amenities_json?: string; activities_json?: string; images_json?: string }): any => {
     const db: any = {};
     if (prop.name !== undefined) db.name = prop.name;
     if (prop.type !== undefined) db.type = prop.type;
     if (prop.location !== undefined) db.location = prop.location;
     if (prop.description !== undefined) db.description = prop.description;
+    
+    // Handle images - can come as array or parsed from JSON
     if (prop.images !== undefined) db.images = prop.images;
+    if (prop.images_json !== undefined) db.images = JSON.parse(prop.images_json);
+    
     if (prop.total_rooms !== undefined) db.total_rooms = prop.total_rooms;
-    if (prop.room_types !== undefined) db.room_types = prop.room_types;
-    if (prop.facilities !== undefined) db.facilities = prop.facilities;
-    if (prop.amenities !== undefined) db.amenities = prop.amenities;
-    if (prop.activities !== undefined) db.activities = prop.activities;
-    if (prop.wetu_ibrochure_url !== undefined) db.wetu_ibrochure_url = prop.wetu_ibrochure_url;
+    
+    // Handle room_types - can come as array or parsed from JSON
+    if (prop.room_types_json !== undefined) {
+        db.room_types = JSON.parse(prop.room_types_json);
+    } else if (prop.room_types !== undefined) {
+        db.room_types = prop.room_types;
+    }
+    
+    // Handle facilities - split CSV string or parse JSON
+    if (prop.facilities !== undefined) {
+        if (typeof prop.facilities === 'string') {
+            db.facilities = prop.facilities.split(',').map(s => s.trim());
+        } else {
+            db.facilities = prop.facilities;
+        }
+    }
+    
+    // Handle amenities - split CSV string or parse JSON
+    if (prop.amenities !== undefined) {
+        if (typeof prop.amenities === 'string') {
+            db.amenities = prop.amenities.split(',').map(s => s.trim());
+        } else {
+            db.amenities = prop.amenities;
+        }
+    }
+    
+    // Handle activities - split CSV string or parse JSON
+    if (prop.activities !== undefined) {
+        if (typeof prop.activities === 'string') {
+            db.activities = prop.activities.split(',').map(s => s.trim());
+        } else {
+            db.activities = prop.activities;
+        }
+    }
+    
+    if (prop.wetuIbrochureUrl !== undefined) db.wetu_ibrochure_url = prop.wetuIbrochureUrl;
     if (prop.featured !== undefined) db.featured = prop.featured;
     return db;
 };
