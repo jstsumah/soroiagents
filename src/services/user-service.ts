@@ -109,12 +109,22 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
     const profileData = mapUserToProfile(data);
     console.log('[updateUser] uid=', uid, 'data=', data, 'profileData=', profileData);
 
-    // Handle approval logic
+    // Handle approval logic & Security Check
+    const authUser = await getAuthenticatedUser();
+    
+    // If attempting to change status to active (Approval)
     if (data.status === 'active') {
-        const adminUser = await getAuthenticatedUser();
-        if (adminUser) {
-            profileData.approved_by = adminUser.uid;
-            profileData.approved_at = new Date().toISOString();
+        if (!authUser || (authUser.role !== 'Admin' && authUser.role !== 'Super Admin')) {
+            throw new Error('Unauthorized: Only Admins and Super Admins can approve agents.');
+        }
+        profileData.approved_by = authUser.uid;
+        profileData.approved_at = new Date().toISOString();
+    }
+    
+    // General security: Only admins can change Tier or Role
+    if (data.tier || data.role) {
+        if (!authUser || (authUser.role !== 'Admin' && authUser.role !== 'Super Admin')) {
+             throw new Error('Unauthorized: Only Admins can modify User Tiers or Roles.');
         }
     }
 
