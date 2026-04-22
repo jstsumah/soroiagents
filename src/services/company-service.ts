@@ -11,17 +11,18 @@ import { deleteFile, uploadFile } from './storage-service';
 
 export const importCompanies = async (
     companies: Partial<Company>[]
-): Promise<{ successCount: number; skippedCount: number; errors: { company: Partial<Company>; error: string }[] }> => {
+): Promise<{ successCount: number; updatedCount: number; skippedCount: number; errors: { company: Partial<Company>; error: string }[] }> => {
     const supabaseAdmin = getSupabaseAdmin();
     const errors: { company: Partial<Company>; error: string }[] = [];
     let successCount = 0;
+    let updatedCount = 0;
     let skippedCount = 0;
 
     const toDb = (company: Partial<Company>): Record<string, unknown> => {
         const db: Record<string, unknown> = {};
         if (company.name !== undefined) db.name = company.name;
         if (company.phone !== undefined) db.phone = company.phone;
-        if (company.website_url !== undefined) db.website_url = company.website_url;
+        if (company.website_url !== undefined) db.website_url = company.website_url ? ensureHttps(company.website_url) : company.website_url;
         if (company.company_reg !== undefined) db.company_reg = company.company_reg;
         if (company.company_reg_doc !== undefined) db.company_reg_doc = company.company_reg_doc;
         if (company.tra_license !== undefined) db.tra_license = company.tra_license;
@@ -44,18 +45,74 @@ export const importCompanies = async (
             continue;
         }
 
-        // Check for duplicates by name
-        const { data: existing } = await supabaseAdmin
+        // Try to find an existing record by Name (Case-insensitive) first
+        let { data: existing } = await supabaseAdmin
             .from('companies')
-            .select('id')
+            .select('*')
             .ilike('name', company.name.trim())
             .maybeSingle();
 
+        // If no name match, try unique identifier fields
+        if (!existing) {
+            const uniqueFields: (keyof Company)[] = ['vat_no', 'company_reg', 'tra_license'];
+            for (const field of uniqueFields) {
+                const value = company[field];
+                if (value && typeof value === 'string' && value.trim().length > 0) {
+                    const { data: match } = await supabaseAdmin
+                        .from('companies')
+                        .select('*')
+                        .eq(field, value.trim())
+                        .maybeSingle();
+                    if (match) {
+                        existing = match;
+                        break;
+                    }
+                }
+            }
+        }
+
         if (existing) {
-            skippedCount++;
+            // Case 1: Match found - logic for filling empty info
+            const updates: Record<string, any> = {};
+            let hasChanges = false;
+
+            const fieldsToUpdate: (keyof Company)[] = [
+                'phone', 'website_url', 'company_reg', 'tra_license', 
+                'street_address', 'city', 'country', 'postal_address', 
+                'zip_code', 'vat_no', 'dmc'
+            ];
+
+            for (const key of fieldsToUpdate) {
+                const newValue = company[key];
+                const existingValue = existing[key];
+
+                // Only update if database value is null/empty AND incoming value is NOT empty
+                if ((existingValue === null || existingValue === undefined || String(existingValue).trim() === '') &&
+                    (newValue !== undefined && newValue !== null && String(newValue).trim() !== '')) {
+                    
+                    updates[key] = key === 'website_url' ? ensureHttps(newValue as string) : newValue;
+                    hasChanges = true;
+                }
+            }
+
+            if (hasChanges) {
+                const { error: updateError } = await supabaseAdmin
+                    .from('companies')
+                    .update(updates)
+                    .eq('id', existing.id);
+
+                if (updateError) {
+                    errors.push({ company, error: `Found existing company "${existing.name}" but update failed: ${updateError.message}` });
+                } else {
+                    updatedCount++;
+                }
+            } else {
+                skippedCount++;
+            }
             continue;
         }
 
+        // Case 2: No match found - Insert new company
         const { data, error } = await supabaseAdmin
             .from('companies')
             .insert(toDb(company))
@@ -82,7 +139,7 @@ export const importCompanies = async (
         }
     }
 
-    return { successCount, skippedCount, errors };
+    return { successCount, updatedCount, skippedCount, errors };
 };
 
 const isDuplicateCompany = async (company: Partial<Company>, excludeId?: string): Promise<{ isDuplicate: boolean; field: string; value: string } | null> => {

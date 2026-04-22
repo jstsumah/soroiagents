@@ -60,7 +60,10 @@ export default function AdminCompaniesPage() {
   const [importErrors, setImportErrors] = React.useState<{ company: Partial<Company>; error: string }[]>([]);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = React.useState(false);
   const [selectedCompanyIds, setSelectedCompanyIds] = React.useState<Set<string>>(new Set());
+  const [importTotal, setImportTotal] = React.useState(0);
+  const [importProcessed, setImportProcessed] = React.useState(0);
   const MAX_IMPORT_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+  const IMPORT_CHUNK_SIZE = 50;
 
   const fetchCompanies = React.useCallback(async () => {
     setIsLoading(true);
@@ -285,34 +288,59 @@ export default function AdminCompaniesPage() {
         });
 
         const companiesToImport: Partial<Company>[] = json.map(row => ({
-          name: getColumnValue(row, 'name', 'company name'),
-          phone: getColumnValue(row, 'phone', 'telephone'),
-          website_url: getColumnValue(row, 'website', 'website_url', 'url'),
-          street_address: getColumnValue(row, 'street_address', 'address', 'street address'),
+          name: getColumnValue(row, 'name', 'company name', 'company'),
+          phone: getColumnValue(row, 'phone', 'telephone', 'mobile', 'cell'),
+          website_url: getColumnValue(row, 'website', 'website_url', 'url', 'website url'),
+          street_address: getColumnValue(row, 'street_address', 'address', 'street address', 'location'),
           city: getColumnValue(row, 'city', 'town'),
           country: getColumnValue(row, 'country'),
-          postal_address: getColumnValue(row, 'postal_address', 'postal address', 'po_box', 'p.o. box'),
-          zip_code: getColumnValue(row, 'zip_code', 'zipcode', 'postal_code', 'postal code'),
-          vat_no: getColumnValue(row, 'vat_no', 'vat'),
-          company_reg: getColumnValue(row, 'company_reg', 'company registration', 'reg_no'),
-          tra_license: getColumnValue(row, 'tra_license', 'tra'),
+          postal_address: getColumnValue(row, 'postal_address', 'postal address', 'po_box', 'p.o. box', 'box'),
+          zip_code: getColumnValue(row, 'zip_code', 'zipcode', 'postal_code', 'postal code', 'zip'),
+          vat_no: getColumnValue(row, 'vat_no', 'vat', 'vat no', 'vat no.', 'tax_no', 'tax id'),
+          company_reg: getColumnValue(row, 'company_reg', 'company registration', 'reg_no', 'reg no', 'company reg no', 'company reg no.'),
+          tra_license: getColumnValue(row, 'tra_license', 'tra', 'tra license', 'tra license no', 'tra license no.'),
           dmc: getColumnValue(row, 'dmc'),
         }));
 
-        const result = await importCompanies(companiesToImport);
+        const total = companiesToImport.length;
+        setImportTotal(total);
+        setImportProcessed(0);
+
+        let finalResult = {
+            successCount: 0,
+            updatedCount: 0,
+            skippedCount: 0,
+            errors: [] as { company: Partial<Company>; error: string }[]
+        };
+
+        // Process in chunks to show progress
+        for (let i = 0; i < total; i += IMPORT_CHUNK_SIZE) {
+            const chunk = companiesToImport.slice(i, i + IMPORT_CHUNK_SIZE);
+            const result = await importCompanies(chunk);
+            
+            finalResult.successCount += result.successCount;
+            finalResult.updatedCount += result.updatedCount;
+            finalResult.skippedCount += result.skippedCount;
+            finalResult.errors = [...finalResult.errors, ...result.errors];
+            
+            setImportProcessed(Math.min(i + IMPORT_CHUNK_SIZE, total));
+        }
 
         let summary = '';
         const parts: string[] = [];
         
-        if (result.successCount > 0) {
-          parts.push(`${result.successCount} company(ies) imported successfully`);
+        if (finalResult.successCount > 0) {
+          parts.push(`${finalResult.successCount} company(ies) imported successfully`);
         }
-        if (result.skippedCount > 0) {
-          parts.push(`${result.skippedCount} duplicate(s) skipped`);
+        if (finalResult.updatedCount > 0) {
+          parts.push(`${finalResult.updatedCount} company(ies) updated with new info`);
         }
-        if (result.errors.length > 0) {
-          parts.push(`${result.errors.length} error(s)`);
-          setImportErrors(result.errors);
+        if (finalResult.skippedCount > 0) {
+          parts.push(`${finalResult.skippedCount} duplicate(s) skipped`);
+        }
+        if (finalResult.errors.length > 0) {
+          parts.push(`${finalResult.errors.length} error(s)`);
+          setImportErrors(finalResult.errors);
         }
         
         summary = parts.join(', ');
@@ -320,13 +348,13 @@ export default function AdminCompaniesPage() {
         toast({
           title: "Import Complete",
           description: summary,
-          variant: result.errors.length > 0 ? "destructive" : result.skippedCount > 0 ? "default" : "default",
-          action: result.errors.length > 0 ? (
+          variant: finalResult.errors.length > 0 ? "destructive" : finalResult.skippedCount > 0 ? "default" : "default",
+          action: finalResult.errors.length > 0 ? (
             <Button variant="outline" size="sm" onClick={() => setIsErrorDialogOpen(true)}>
               View Errors
             </Button>
           ) : undefined,
-          duration: result.errors.length > 0 ? 20000 : 5000,
+          duration: finalResult.errors.length > 0 ? 20000 : 5000,
         });
 
         fetchCompanies();
@@ -502,12 +530,15 @@ export default function AdminCompaniesPage() {
                 Importing Companies
               </h3>
               <p className="text-xs text-muted-foreground mt-1">
-                Processing your file. This may take a moment...
+                Processing {importProcessed} of {importTotal} companies...
               </p>
+            </div>
+            <div className="text-sm font-medium">
+                {Math.round((importProcessed / importTotal) * 100)}%
             </div>
           </div>
           <Progress 
-            value={100}
+            value={(importProcessed / importTotal) * 100}
             className="h-2"
           />
         </div>
