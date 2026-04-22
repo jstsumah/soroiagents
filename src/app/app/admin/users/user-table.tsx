@@ -43,12 +43,14 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { MoreHorizontal, ArrowUpDown, ChevronLeft, ChevronRight, Columns, Upload, Download, FileDown, Trash2, Calendar as CalendarIcon, X, Eye } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, ChevronLeft, ChevronRight, Columns, Upload, Download, FileDown, Trash2, Calendar as CalendarIcon, X, Eye, Edit } from "lucide-react";
 import type { User, Tier, Status, Role, UserType, Company } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { read, utils, writeFile } from 'xlsx';
 import { TIERS } from "@/lib/constants";
-import { getUser, updateUser, sendPasswordResetEmail, createUser, getUsers, sendActivationEmail } from "@/services/user-service";
+import { TierBadge } from "@/components/ui/tier-badge";
+import { AdminSetPasswordDialog } from "@/components/auth/admin-set-password-dialog";
+import { getUser, updateUser, sendPasswordResetEmail, createUser, getUsers, sendActivationEmail, getUsersByCompanyId } from "@/services/user-service";
 import { getCompanies, getCompany } from "@/services/company-service";
 import { deleteUser, adminSetUserPassword } from "@/services/admin-service";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -179,6 +181,14 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
   const [newPassword, setNewPassword] = React.useState("");
   const [isSettingPassword, setIsSettingPassword] = React.useState(false);
 
+  // User Detail Modal State
+  const [selectedUserForView, setSelectedUserForView] = React.useState<User | null>(null);
+  const [isUserViewModalOpen, setIsUserViewModalOpen] = React.useState(false);
+
+  const openUserDetail = (user: User) => {
+    setSelectedUserForView(user);
+    setIsUserViewModalOpen(true);
+  };
   const userNameMap = React.useMemo(() => {
     const map: Record<string, string> = {};
     (initialUsers || []).forEach(user => {
@@ -1239,7 +1249,12 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
                     </TableCell>
                   )}
                   {columnVisibility.name && <TableCell className="font-medium">
-                    <Link href={`/app/admin/users/${user.uid}`} className="font-medium hover:underline">{user.name}</Link>
+                    <button 
+                        onClick={() => openUserDetail(user)}
+                        className="font-medium text-primary hover:underline text-left block"
+                    >
+                        {user.name}
+                    </button>
                     <div className="text-sm text-muted-foreground">{user.email}</div>
                   </TableCell>}
                   {columnVisibility.company && (
@@ -1464,6 +1479,77 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
                     }}
                 >
                     Edit Company
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isUserViewModalOpen} onOpenChange={setIsUserViewModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="border-b pb-4 mb-4 text-left">
+            <div className="flex items-center gap-4">
+              <DialogTitle className="text-2xl font-bold text-primary">{selectedUserForView?.name}</DialogTitle>
+              {selectedUserForView?.tier && <TierBadge tier={selectedUserForView.tier} />}
+            </div>
+            <DialogDescription>
+              User profile details and account status.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedUserForView && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                <DetailRow label="Full Name" value={selectedUserForView.name} />
+                <DetailRow label="Email Address" value={selectedUserForView.email} />
+                <DetailRow label="Company" value={selectedUserForView.company || 'Not Linked'} />
+                <DetailRow label="Phone" value={selectedUserForView.phone || 'N/A'} />
+                <DetailRow label="Country" value={selectedUserForView.country || 'N/A'} />
+                <DetailRow label="User Type" value={selectedUserForView.type?.toUpperCase() || 'N/A'} />
+                <DetailRow label="DMC" value={selectedUserForView.type === 'international' ? (selectedUserForView.dmc || 'N/A') : 'N/A'} />
+                <DetailRow label="Role" value={selectedUserForView.role || 'Agent'} />
+                <DetailRow label="Status" value={
+                    <Badge variant={selectedUserForView.status === "active" ? "default" : "destructive"}>
+                        {selectedUserForView.status}
+                    </Badge>
+                } />
+                <DetailRow label="Member Since" value={selectedUserForView.created_at ? new Date(selectedUserForView.created_at).toLocaleDateString() : 'N/A'} />
+                <DetailRow label="Last Seen" value={selectedUserForView.last_seen ? new Date(selectedUserForView.last_seen).toLocaleString() : 'Never'} />
+              </div>
+
+              {selectedUserForView.remarks && (
+                  <div className="pt-2">
+                      <DetailRow label="Remarks" value={selectedUserForView.remarks} />
+                  </div>
+              )}
+              
+              <div className="pt-6 border-t flex flex-wrap justify-end gap-3">
+                <Button 
+                    variant="outline"
+                    onClick={() => setIsUserViewModalOpen(false)}
+                >
+                    Close
+                </Button>
+                
+                <Button 
+                    variant="outline" 
+                    onClick={() => window.open(`/app?impersonate=${selectedUserForView.uid}`, '_blank')}
+                >
+                    <Eye className="mr-2 h-4 w-4" />
+                    View as User
+                </Button>
+
+                <AdminSetPasswordDialog user={selectedUserForView} />
+
+                <Button 
+                    variant="default"
+                    onClick={() => {
+                        setIsUserViewModalOpen(false);
+                        router.push(`/app/admin/users/edit/${selectedUserForView.uid}`);
+                    }}
+                >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit User
                 </Button>
               </div>
             </div>
