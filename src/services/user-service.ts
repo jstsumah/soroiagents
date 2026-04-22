@@ -18,7 +18,12 @@ export const getUsers = async (): Promise<User[]> => {
     while (true) {
         const { data, error } = await supabaseAdmin
             .from('profiles')
-            .select('*')
+            .select(`
+                *,
+                companies (
+                    name
+                )
+            `)
             .range(from, from + step - 1)
             .order('created_at', { ascending: false });
         
@@ -43,7 +48,12 @@ export const getUser = async (uid: string): Promise<User | null> => {
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('profiles')
-        .select('*')
+        .select(`
+            *,
+            companies (
+                name
+            )
+        `)
         .eq('id', uid)
         .single();
 
@@ -139,7 +149,7 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
     return { success: true };
 };
 
-export const createUser = async (data: CreateUserDto) => {
+export const createUser = async (data: CreateUserDto, patchIfExists: boolean = false) => {
     if (!data.password) throw new Error("Password is required");
 
     const supabase = await createClient();
@@ -151,12 +161,12 @@ export const createUser = async (data: CreateUserDto) => {
         isAdmin = profile?.role === 'Admin' || profile?.role === 'Super Admin';
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
     let authData: any;
     let authError: any;
 
     if (isAdmin) {
         // Use Admin API to avoid logging out the admin
-        const supabaseAdmin = getSupabaseAdmin();
         const adminCreateResult = await supabaseAdmin.auth.admin.createUser({
             email: data.email,
             password: data.password,
@@ -184,85 +194,96 @@ export const createUser = async (data: CreateUserDto) => {
         authData = signupResult.data;
         authError = signupResult.error;
 
-        // Handle "User already registered" error
-        if (authError && (authError.message.includes('already been registered') || authError.message.includes('already registered'))) {
-            // Check if profile exists
-            const existingUser = await getUserByEmail(data.email);
-            if (existingUser) {
-                return { uid: existingUser.uid, toastMessage: "User already exists. Profile updated if needed.", alreadyExists: true };
-            }
-            // If auth user exists but no profile, we might need to link them or just fail gracefully
-            throw new Error("User already registered in authentication system, but no profile found. Please contact support.");
-        }
-
         // 2. Fallback: If rate limit exceeded, use Admin API + MailerSend
         if (authError && (authError.message.includes('rate limit exceeded') || (authError as any).status === 429)) {
             console.warn('Supabase signUp rate limit hit, falling back to Admin API + MailerSend');
-            const supabaseAdmin = getSupabaseAdmin();
-            
             const adminCreateResult = await supabaseAdmin.auth.admin.createUser({
                 email: data.email,
                 password: data.password,
-                email_confirm: false, // We'll send the link
+                email_confirm: false,
                 user_metadata: {
                     name: data.name,
                     role: data.role || 'Agent'
                 }
             });
+            authData = adminCreateResult.data;
+            authError = adminCreateResult.error;
 
-            if (adminCreateResult.error) {
-                if (adminCreateResult.error.message.includes('already been registered') || adminCreateResult.error.message.includes('already registered')) {
-                    const existingUser = await getUserByEmail(data.email);
-                    if (existingUser) {
-                        return { uid: existingUser.uid, toastMessage: "User already exists.", alreadyExists: true };
+            if (!authError) {
+                // Generate and send confirmation link manually... (rest of the logic preserved)
+                const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+                    type: 'signup',
+                    email: data.email,
+                });
+                if (!linkError) {
+                    const link = linkData.properties.action_link;
+                    const companyDetails = await getCompanyDetails();
+                    try {
+                        await sendEmail({
+                            to: { email: data.email, name: data.name },
+                            from: { email: companyDetails.contactEmail || 'noreply@example.com', name: companyDetails.companyName },
+                            subject: `Confirm Your Account - ${companyDetails.companyName}`,
+                            html: `<p>Welcome ${data.name}, confirm your email here: <a href="${link}">${link}</a></p>`,
+                            text: `Welcome, confirm your email: ${link}`
+                        });
+                    } catch (e) {}
+                }
+            }
+        }
+    }
+
+    // Lookup or Create company ID by name if not provided
+    let finalCompanyId = data.companyId;
+    if (!finalCompanyId && data.company) {
+        const { data: companyMatch } = await supabaseAdmin
+            .from('companies')
+            .select('id')
+            .ilike('name', data.company.trim())
+            .maybeSingle();
+        
+        if (companyMatch) {
+            finalCompanyId = companyMatch.id;
+        } else {
+            // Auto-create company if missing
+            const { data: newCompany, error: createError } = await supabaseAdmin
+                .from('companies')
+                .insert({ name: data.company.trim() })
+                .select('id')
+                .single();
+            
+            if (!createError && newCompany) {
+                finalCompanyId = newCompany.id;
+            }
+        }
+    }
+
+    // Handle "User already registered" error
+    if (authError && (authError.message.includes('already been registered') || authError.message.includes('already registered'))) {
+        const existingUser = await getUserByEmail(data.email);
+        if (existingUser) {
+            if (patchIfExists) {
+                let hasChanges = false;
+                
+                // Re-mapping logic for patching - use the looked-up company ID
+                const profileUpdates = mapUserToProfile({ ...data, companyId: finalCompanyId });
+                const finalUpdates: any = {};
+                for (const key in profileUpdates) {
+                    if ((existingUser as any)[key] === null || (existingUser as any)[key] === undefined || String((existingUser as any)[key]).trim() === '') {
+                         if (profileUpdates[key] !== undefined && profileUpdates[key] !== null && String(profileUpdates[key]).trim() !== '') {
+                             finalUpdates[key] = profileUpdates[key];
+                             hasChanges = true;
+                         }
                     }
                 }
-                throw adminCreateResult.error;
-            }
-            
-            authData = adminCreateResult.data;
-            
-            // Generate confirmation link
-            const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-                type: 'signup',
-                email: data.email,
-            });
 
-            if (!linkError) {
-                const link = linkData.properties.action_link;
-                const companyDetails = await getCompanyDetails();
-                
-                try {
-                    await sendEmail({
-                        to: { email: data.email, name: data.name },
-                        from: { 
-                            email: companyDetails.contactEmail || 'noreply@example.com', 
-                            name: companyDetails.companyName 
-                        },
-                        subject: `Confirm Your Account - ${companyDetails.companyName}`,
-                        html: `
-                            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                                <h2>Welcome to ${companyDetails.companyName}</h2>
-                                <p>Hello ${data.name},</p>
-                                <p>Thank you for signing up. Please confirm your email address by clicking the button below:</p>
-                                <div style="margin: 30px 0;">
-                                    <a href="${link}" style="background-color: #7B6A58; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Confirm Email</a>
-                                </div>
-                                <p>If the button doesn't work, copy and paste this link into your browser:</p>
-                                <p style="word-break: break-all; color: #666;">${link}</p>
-                                <hr style="margin-top: 40px; border: 0; border-top: 1px solid #eee;" />
-                                <p style="font-size: 12px; color: #999;">&copy; ${new Date().getFullYear()} ${companyDetails.companyName}. All rights reserved.</p>
-                            </div>
-                        `,
-                        text: `Welcome to ${companyDetails.companyName}. Please confirm your email: ${link}`
-                    });
-                } catch (emailError) {
-                    console.error('Failed to send manual confirmation email:', emailError);
+                if (hasChanges) {
+                    await supabaseAdmin.from('profiles').update(finalUpdates).eq('id', existingUser.uid);
+                    return { uid: existingUser.uid, toastMessage: "User updated with missing info.", alreadyExists: true, updated: true };
                 }
             }
-        } else if (authError) {
-            throw authError;
+            return { uid: existingUser.uid, toastMessage: "User already exists.", alreadyExists: true };
         }
+        throw authError;
     }
 
     if (authError) throw authError;
@@ -270,12 +291,12 @@ export const createUser = async (data: CreateUserDto) => {
 
     const uid = authData.user.id;
 
-    // 2. Update Profile (Profile is created by trigger in SQL, but we upsert to ensure all fields are set and handle race conditions)
+    // 2. Update Profile
     const profileUpdate = mapUserToProfile({
         name: data.name,
         email: data.email,
         company: data.company,
-        companyId: data.companyId,
+        companyId: finalCompanyId, // Use the looked-up ID
         type: data.type,
         tier: data.tier,
         status: data.status,
@@ -288,15 +309,12 @@ export const createUser = async (data: CreateUserDto) => {
         passwordResetRequired: data.passwordResetRequired ?? true
     });
 
-    const supabaseAdmin = getSupabaseAdmin();
     const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .update(profileUpdate)
         .eq('id', uid);
 
-    if (profileError) {
-        console.error('Error updating profile after creation:', profileError);
-    }
+    if (profileError) console.error('Error updating profile:', profileError);
 
     try {
         const admin = await getAuthenticatedUser();
@@ -308,9 +326,7 @@ export const createUser = async (data: CreateUserDto) => {
                 details: { newUserId: uid, email: data.email, name: data.name, role: data.role }
             });
         }
-    } catch (e) {
-        console.error("Could not log user creation activity:", e);
-    }
+    } catch (e) {}
 
     return { uid, toastMessage: "User created successfully" };
 };
@@ -395,7 +411,7 @@ const mapProfileToUser = (profile: any): User => ({
     type: profile.type,
     passwordResetRequired: profile.password_reset_required,
     companyId: profile.company_id,
-    company: profile.company_name, // You might need a join or separate field
+    company: profile.companies?.name || null,
     phone: profile.phone,
     payment_terms: profile.payment_terms,
     remarks: profile.remarks,

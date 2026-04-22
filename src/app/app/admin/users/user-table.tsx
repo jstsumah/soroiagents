@@ -48,8 +48,15 @@ import type { User, Tier, Status, Role, UserType, Company } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { read, utils, writeFile } from 'xlsx';
 import { TIERS } from "@/lib/constants";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { getUser, updateUser, sendPasswordResetEmail, createUser, getUsers, sendActivationEmail } from "@/services/user-service";
-import { getCompanies } from "@/services/company-service";
+import { getCompanies, getCompany } from "@/services/company-service";
 import { deleteUser, adminSetUserPassword } from "@/services/admin-service";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
@@ -115,16 +122,16 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibility>({
     name: true,
     company: true,
-    dmc: false,
-    country: true,
     phone: true,
-    type: true,
     tier: true,
     status: true,
-    last_seen: true,
+    dmc: false,
+    country: false,
+    type: false,
+    last_seen: false,
     role: false,
     created_at: false,
-    approvedBy: true,
+    approvedBy: false,
     remarks: false,
     actions: true,
   });
@@ -136,6 +143,38 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
   const [usersToDelete, setUsersToDelete] = React.useState<User[]>([]);
   
   const [tierChangeConfirmation, setTierChangeConfirmation] = React.useState<{ user: User; newTier: Tier } | null>(null);
+
+  // Company Detail Drawer State
+  const [selectedCompany, setSelectedCompany] = React.useState<Company | null>(null);
+  const [isCompanyDrawerOpen, setIsCompanyDrawerOpen] = React.useState(false);
+  const [isFetchingCompany, setIsFetchingCompany] = React.useState(false);
+
+  const openCompanyDetails = async (companyId: string) => {
+    if (!companyId) return;
+    setIsFetchingCompany(true);
+    try {
+        const company = await getCompany(companyId);
+        if (company) {
+            setSelectedCompany(company);
+            setIsCompanyDrawerOpen(true);
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Company details not found."
+            });
+        }
+    } catch (error) {
+        console.error("Failed to fetch company details:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to load company details."
+        });
+    } finally {
+        setIsFetchingCompany(false);
+    }
+  };
 
   const [isImporting, setIsImporting] = React.useState(false);
   const [importProgress, setImportProgress] = React.useState<number | null>(null);
@@ -475,6 +514,9 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
         });
 
         let successCount = 0;
+        let updatedCount = 0;
+        let skippedCount = 0;
+        let errorsCount = 0;
         let errors: { user: any; error: string }[] = [];
 
         const getColumnValue = (row: any, ...keys: string[]) => {
@@ -493,34 +535,51 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
                 const email = getColumnValue(row, 'email', 'e-mail', 'email address');
                 const password = getColumnValue(row, 'password') || 'password123';
                 const name = getColumnValue(row, 'name', 'full name');
-                const company = getColumnValue(row, 'company', 'company name');
+                const companyName = getColumnValue(row, 'company', 'company name');
 
-                if (!email || !name || !company) {
+                if (!email || !name || !companyName) {
                     throw new Error("Missing required fields (email, name, company).");
                 }
                 
-                await createUser({
+                const result = await createUser({
                     email,
                     password,
                     name,
-                    company,
+                    company: companyName,
                     tier: getColumnValue(row, 'tier') || 'Brass',
                     status: getColumnValue(row, 'status') || 'pending',
                     type: getColumnValue(row, 'type') || 'local',
                     dmc: getColumnValue(row, 'dmc') || '',
+                    phone: getColumnValue(row, 'phone', 'telephone', 'mobile') || '',
+                    country: getColumnValue(row, 'country') || '',
                     passwordResetRequired: true,
-                });
+                }, true); // Pass true for patchIfExists
 
-                successCount++;
+                if (result.updated) {
+                    updatedCount++;
+                } else if (result.alreadyExists) {
+                    skippedCount++;
+                } else {
+                    successCount++;
+                }
             } catch (userError: any) {
+                errorsCount++;
                 errors.push({ user: row, error: userError.message });
             }
             setImportProgress(((index + 1) / json.length) * 100);
+            
+            // Artificial delay to make progress visible if processing is too fast
+            // if (json.length < 10) await new Promise(r => setTimeout(r, 100));
         }
         
-        let summary = `${successCount} users imported successfully.`;
+        let summaryParts = [];
+        if (successCount > 0) summaryParts.push(`${successCount} new user(s) created`);
+        if (updatedCount > 0) summaryParts.push(`${updatedCount} user(s) updated with new info`);
+        if (skippedCount > 0) summaryParts.push(`${skippedCount} duplicate(s) skipped`);
+        if (errorsCount > 0) summaryParts.push(`${errorsCount} error(s)`);
+        
+        const summary = summaryParts.join(', ') || "No users were imported.";
         if (errors.length > 0) {
-          summary += ` ${errors.length} failed.`;
           setImportErrors(errors);
         }
 
@@ -1082,14 +1141,17 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
       </Dialog>
 
       <div className="rounded-md border bg-card">
-         {isImporting && importProgress !== null ? (
-            <div className="flex items-center gap-4 bg-muted/50 p-2 text-sm text-muted-foreground">
-                <div className="flex-1 px-2 space-y-1">
-                    <Label htmlFor="import-progress">Importing Users...</Label>
-                    <Progress value={importProgress} id="import-progress" />
+          {isImporting && importProgress !== null ? (
+            <div className="flex items-center gap-4 bg-muted/50 p-3 rounded-md text-sm">
+              <div className="flex-1 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-foreground">Importing Users...</span>
+                  <span className="text-muted-foreground">{Math.round(importProgress)}%</span>
                 </div>
+                <Progress value={importProgress} className="h-2" />
+              </div>
             </div>
-         ) : (selectedUsers.length > 0 && (
+          ) : (selectedUsers.length > 0 && (
             <div className="flex items-center flex-wrap gap-4 bg-muted/50 p-2 text-sm text-muted-foreground">
                 <div className="flex-1 px-2">
                     {selectedUsers.length} of {sortedUsers.length} user(s) selected.
@@ -1177,7 +1239,21 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
                     <Link href={`/app/admin/users/${user.uid}`} className="font-medium hover:underline">{user.name}</Link>
                     <div className="text-sm text-muted-foreground">{user.email}</div>
                   </TableCell>}
-                  {columnVisibility.company && <TableCell>{user.company}</TableCell>}
+                  {columnVisibility.company && (
+                    <TableCell>
+                        {user.companyId ? (
+                            <button 
+                                onClick={() => openCompanyDetails(user.companyId!)}
+                                className="text-primary hover:underline text-left font-medium"
+                                disabled={isFetchingCompany}
+                            >
+                                {user.company}
+                            </button>
+                        ) : (
+                            <span className="text-muted-foreground">{user.company || 'N/A'}</span>
+                        )}
+                    </TableCell>
+                  )}
                   {columnVisibility.dmc && <TableCell>{user.type === 'local' ? 'N/A' : user.dmc}</TableCell>}
                   {columnVisibility.country && <TableCell>{user.country}</TableCell>}
                   {columnVisibility.phone && <TableCell>{user.phone}</TableCell>}
@@ -1344,8 +1420,64 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
             </div>
         </div>
       </div>
+
+      <Sheet open={isCompanyDrawerOpen} onOpenChange={setIsCompanyDrawerOpen}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          <SheetHeader className="border-b pb-4 mb-4">
+            <SheetTitle className="text-2xl font-bold text-primary">{selectedCompany?.name}</SheetTitle>
+            <SheetDescription>
+              Company profile and contact details.
+            </SheetDescription>
+          </SheetHeader>
+          
+          {selectedCompany && (
+            <div className="space-y-6 py-4">
+              <div className="grid grid-cols-1 gap-4">
+                <DetailRow label="Phone" value={selectedCompany.phone} />
+                <DetailRow label="Website" value={selectedCompany.website_url} isLink />
+                <DetailRow label="Country" value={selectedCompany.country} />
+                <DetailRow label="City" value={selectedCompany.city} />
+                <DetailRow label="Street Address" value={selectedCompany.street_address} />
+                <DetailRow label="VAT Number" value={selectedCompany.vat_no} />
+                <DetailRow label="Registration No." value={selectedCompany.company_reg} />
+                <DetailRow label="TRA License" value={selectedCompany.tra_license} />
+                <DetailRow label="DMC" value={selectedCompany.dmc} />
+              </div>
+              
+              <div className="pt-6 border-t">
+                <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={() => {
+                        setIsCompanyDrawerOpen(false);
+                        router.push(`/app/admin/companies/edit/${selectedCompany.id}`);
+                    }}
+                >
+                    Edit Company Details
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
+}
+
+function DetailRow({ label, value, isLink }: { label: string, value?: string | null, isLink?: boolean }) {
+    if (!value) return null;
+    return (
+        <div className="flex flex-col space-y-1">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+            {isLink ? (
+                <a href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium break-all">
+                    {value}
+                </a>
+            ) : (
+                <span className="text-sm font-medium text-foreground">{value}</span>
+            )}
+        </div>
+    );
 }
 
     
