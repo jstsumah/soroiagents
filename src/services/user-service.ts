@@ -469,7 +469,16 @@ const mapUserToProfile = (user: Partial<User>): any => {
 export const sendPasswordResetEmail = async (email: string) => {
     try {
         const supabase = await createClient();
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        
+        // Get the site URL dynamically from headers to ensure redirect works in all environments
+        const headersList = await import('next/headers').then(h => h.headers());
+        const host = headersList.get('host');
+        const protocol = host?.includes('localhost') ? 'http' : 'https';
+        const siteUrl = `${protocol}://${host}`;
+        
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${siteUrl}/auth/callback?next=/reset-password`
+        });
         
         if (error) {
             // If rate limit exceeded, try to generate a link manually and send via our email service
@@ -480,6 +489,9 @@ export const sendPasswordResetEmail = async (email: string) => {
                 const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
                     type: 'recovery',
                     email: email,
+                    options: {
+                        redirectTo: `${siteUrl}/auth/callback?next=/reset-password`
+                    }
                 });
 
                 if (linkError) {

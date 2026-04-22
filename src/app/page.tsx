@@ -6,14 +6,25 @@ import { getCompanyDetails } from '@/services/settings-service';
 import type { CompanyDetails } from '@/lib/types';
 import { Package } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [companyDetails, setCompanyDetails] = React.useState<CompanyDetails | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
+    // Smart Detector: If user lands here with an auth code (e.g. from a reset email)
+    // we relay them to the callback handler automatically.
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get('code');
+    if (code) {
+        router.replace(`/auth/callback${url.search}`);
+        return;
+    }
+
     const fetchDetails = async () => {
       setIsLoading(true);
       try {
