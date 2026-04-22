@@ -48,13 +48,6 @@ import type { User, Tier, Status, Role, UserType, Company } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { read, utils, writeFile } from 'xlsx';
 import { TIERS } from "@/lib/constants";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { getUser, updateUser, sendPasswordResetEmail, createUser, getUsers, sendActivationEmail } from "@/services/user-service";
 import { getCompanies, getCompany } from "@/services/company-service";
 import { deleteUser, adminSetUserPassword } from "@/services/admin-service";
@@ -536,9 +529,18 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
                 const password = getColumnValue(row, 'password') || 'password123';
                 const name = getColumnValue(row, 'name', 'full name');
                 const companyName = getColumnValue(row, 'company', 'company name');
+                const createdAtRaw = getColumnValue(row, 'created_at', 'date', 'signup date', 'created');
 
                 if (!email || !name || !companyName) {
                     throw new Error("Missing required fields (email, name, company).");
+                }
+                
+                let created_at: Date | undefined = undefined;
+                if (createdAtRaw) {
+                    const parsedDate = new Date(createdAtRaw);
+                    if (!isNaN(parsedDate.getTime())) {
+                        created_at = parsedDate;
+                    }
                 }
                 
                 const result = await createUser({
@@ -546,6 +548,7 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
                     password,
                     name,
                     company: companyName,
+                    created_at,
                     tier: getColumnValue(row, 'tier') || 'Brass',
                     status: getColumnValue(row, 'status') || 'pending',
                     type: getColumnValue(row, 'type') || 'local',
@@ -1421,45 +1424,52 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
         </div>
       </div>
 
-      <Sheet open={isCompanyDrawerOpen} onOpenChange={setIsCompanyDrawerOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader className="border-b pb-4 mb-4">
-            <SheetTitle className="text-2xl font-bold text-primary">{selectedCompany?.name}</SheetTitle>
-            <SheetDescription>
+      <Dialog open={isCompanyDrawerOpen} onOpenChange={setIsCompanyDrawerOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="border-b pb-4 mb-4 text-left">
+            <DialogTitle className="text-2xl font-bold text-primary">{selectedCompany?.name}</DialogTitle>
+            <DialogDescription>
               Company profile and contact details.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
           
           {selectedCompany && (
-            <div className="space-y-6 py-4">
-              <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-6 py-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                 <DetailRow label="Phone" value={selectedCompany.phone} />
                 <DetailRow label="Website" value={selectedCompany.website_url} isLink />
                 <DetailRow label="Country" value={selectedCompany.country} />
                 <DetailRow label="City" value={selectedCompany.city} />
-                <DetailRow label="Street Address" value={selectedCompany.street_address} />
                 <DetailRow label="VAT Number" value={selectedCompany.vat_no} />
                 <DetailRow label="Registration No." value={selectedCompany.company_reg} />
                 <DetailRow label="TRA License" value={selectedCompany.tra_license} />
                 <DetailRow label="DMC" value={selectedCompany.dmc} />
+                <div className="sm:col-span-2">
+                    <DetailRow label="Street Address" value={selectedCompany.street_address} />
+                </div>
               </div>
               
-              <div className="pt-6 border-t">
+              <div className="pt-6 border-t flex justify-end gap-3">
                 <Button 
-                    className="w-full" 
                     variant="outline"
+                    onClick={() => setIsCompanyDrawerOpen(false)}
+                >
+                    Close
+                </Button>
+                <Button 
+                    variant="default"
                     onClick={() => {
                         setIsCompanyDrawerOpen(false);
                         router.push(`/app/admin/companies/edit/${selectedCompany.id}`);
                     }}
                 >
-                    Edit Company Details
+                    Edit Company
                 </Button>
               </div>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

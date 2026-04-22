@@ -306,6 +306,7 @@ export const createUser = async (data: CreateUserDto, patchIfExists: boolean = f
         dmc: data.dmc,
         payment_terms: data.payment_terms,
         remarks: data.remarks,
+        created_at: data.created_at,
         passwordResetRequired: data.passwordResetRequired ?? true
     });
 
@@ -445,6 +446,7 @@ const mapUserToProfile = (user: Partial<User>): any => {
     if (user.last_seen !== undefined) profile.last_seen = user.last_seen.toISOString();
     if (user.approvedBy !== undefined) profile.approved_by = user.approvedBy;
     if (user.approvedAt !== undefined) profile.approved_at = user.approvedAt instanceof Date ? user.approvedAt.toISOString() : user.approvedAt;
+    if (user.created_at !== undefined) profile.created_at = user.created_at instanceof Date ? user.created_at.toISOString() : user.created_at;
     return profile;
 };
 

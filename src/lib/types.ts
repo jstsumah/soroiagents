@@ -326,5 +326,6 @@ export type CreateUserDto = {
   dmc?: string;
   payment_terms?: string;
   remarks?: string;
+  created_at?: Date;
 }
     
