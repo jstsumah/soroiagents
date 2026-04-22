@@ -47,7 +47,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/app/app/app-provider";
 import { countries } from "@/lib/countries";
 import { getCompanies, getCompany } from "@/services/company-service";
-import { cn } from "@/lib/utils";
+import { cn, formatWebsiteDisplay, ensureHttps } from "@/lib/utils";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -314,7 +314,7 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     <DetailItem label="Company Name" value={companyDetails?.name} />
                                     <DetailItem label="Company Phone" value={companyDetails?.phone} />
-                                    <DetailItem label="Website" value={companyDetails?.website_url ? <a href={companyDetails.website_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{companyDetails.website_url}</a> : "N/A"} />
+                                    <DetailItem label="Website" value={companyDetails?.website_url ? <a href={ensureHttps(companyDetails.website_url)} target="_blank" rel="noreferrer" className="text-primary hover:underline">{formatWebsiteDisplay(companyDetails.website_url)}</a> : "N/A"} />
                                     <DetailItem label="Street Address" value={companyDetails?.street_address} />
                                     <DetailItem label="Postal Address" value={companyDetails?.postal_address} />
                                     <DetailItem label="City" value={companyDetails?.city} />

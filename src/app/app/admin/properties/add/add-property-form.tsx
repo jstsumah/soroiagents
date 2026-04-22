@@ -27,7 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { addProperty, updateProperty, uploadPropertyImage } from "@/services/property-service";
+import { addProperty, updateProperty, uploadPropertyImageFromFormData } from "@/services/property-service";
 import type { Property } from "@/lib/types";
 import * as React from 'react';
 import Image from "next/image";
@@ -125,8 +125,10 @@ const AddPropertyFormComponent = ({ property }: AddPropertyFormProps) => {
   }
 
   const uploadFileAndGetURL = async (file: File, path: string): Promise<string> => {
-    const base64 = await fileToBase64(file);
-    return await uploadPropertyImage(base64, path, file.type);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
+    return await uploadPropertyImageFromFormData(formData);
   };
   
   const removeExistingImage = (index: number) => {

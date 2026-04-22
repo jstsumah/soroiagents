@@ -29,7 +29,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TIERS, CATEGORIES } from "@/lib/constants";
 import type { Tier, Category, Resource } from "@/lib/types";
-import { uploadFile } from "@/services/storage-service";
+import { uploadFileFromFormData } from "@/services/storage-service";
 import { updateResource } from "@/services/resource-service";
 import { useRouter } from "next/navigation";
 import * as React from 'react';
@@ -90,18 +90,11 @@ const EditResourceFormComponent = ({ resource }: EditResourceFormProps) => {
 
   const sourceType = useWatch({ control: form.control, name: 'sourceType' });
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-    });
-  };
-
   const uploadFileAndGetURL = async (file: File, path: string): Promise<string> => {
-    const base64 = await fileToBase64(file);
-    return await uploadFile(base64, path, file.type);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
+    return await uploadFileFromFormData(formData);
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {

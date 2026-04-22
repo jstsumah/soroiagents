@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Property } from '@/lib/types';
 import { logActivity } from './audit-log-service';
 import { getAuthenticatedUser } from './auth-service';
-import { deleteFile, uploadFile } from './storage-service';
+import { deleteFile, uploadFile, uploadFileFromFormData } from './storage-service';
 
 export const getProperties = async (): Promise<Property[]> => {
     const supabaseAdmin = getSupabaseAdmin();
@@ -165,6 +165,10 @@ export const searchProperties = async (searchQuery: string): Promise<Partial<Pro
  */
 export const uploadPropertyImage = async (base64: string, filePath: string, mimeType: string): Promise<string> => {
     return uploadFile(base64, filePath, mimeType);
+};
+
+export const uploadPropertyImageFromFormData = async (formData: FormData): Promise<string> => {
+    return uploadFileFromFormData(formData);
 };
 
 const mapDbToProperty = (db: any): Property => ({

@@ -45,8 +45,8 @@ export type User = {
   role: Role;
   type: UserType;
   passwordResetRequired?: boolean;
-  companyId?: string; // Link to the companies collection
-  company?: string; // Storing name for display purposes
+  companyId?: string | null; // Link to the companies collection
+  company?: string | null; // Storing name for display purposes
   phone?: string; // User's direct phone, not company's
   payment_terms?: string;
   remarks?: string;
@@ -314,8 +314,8 @@ export type CreateUserDto = {
   email: string;
   password?: string;
   name?: string;
-  company?: string;
-  companyId?: string;
+  company?: string | null;
+  companyId?: string | null;
   type?: UserType;
   tier?: Tier;
   status?: Status;

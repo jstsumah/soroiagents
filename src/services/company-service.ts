@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Company } from '@/lib/types';
 import { getAuthenticatedUser } from './auth-service';
 import { logActivity } from './audit-log-service';
+import { ensureHttps } from '@/lib/utils';
 
 import { deleteFile, uploadFile } from './storage-service';
 
@@ -323,7 +324,7 @@ const mapCompanyToDb = (company: Partial<Company>): any => {
     const db: any = {};
     if (company.name !== undefined) db.name = company.name;
     if (company.phone !== undefined) db.phone = company.phone;
-    if (company.website_url !== undefined) db.website_url = company.website_url;
+    if (company.website_url !== undefined) db.website_url = company.website_url ? ensureHttps(company.website_url) : company.website_url;
     if (company.company_reg !== undefined) db.company_reg = company.company_reg;
     if (company.company_reg_doc !== undefined) db.company_reg_doc = company.company_reg_doc;
     if (company.tra_license !== undefined) db.tra_license = company.tra_license;

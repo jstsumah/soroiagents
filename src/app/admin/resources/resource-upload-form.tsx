@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { suggestResourceMetadata } from "@/ai/flows/suggest-resource-metadata";
 import { TIERS } from "@/lib/constants";
 import type { Tier, Category, Resource } from "@/lib/types";
-import { uploadFile } from "@/services/storage-service";
+import { uploadFileFromFormData } from "@/services/storage-service";
 import { addResource } from "@/services/resource-service";
 import { useRouter } from "next/navigation";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -127,18 +127,11 @@ export function ResourceUploadForm({ isItinerary = false }: ResourceUploadFormPr
     });
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-    });
-  }
-
   const uploadFileAndGetURL = async (file: File, path: string): Promise<string> => {
-    const base64 = await fileToBase64(file);
-    return await uploadFile(base64, path, file.type);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
+    return await uploadFileFromFormData(formData);
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {

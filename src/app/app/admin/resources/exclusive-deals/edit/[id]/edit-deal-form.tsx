@@ -28,7 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { TIERS } from "@/lib/constants";
 import type { ExclusiveDeal, UserType } from "@/lib/types";
-import { uploadFile } from "@/services/storage-service";
+import { uploadFileFromFormData } from "@/services/storage-service";
 import { updateDeal } from "@/services/deal-service";
 import Image from "next/image";
 
@@ -90,8 +90,10 @@ const EditDealFormComponent = ({ deal }: EditDealFormProps) => {
   }
 
   const uploadFileAndGetURL = async (file: File, path: string): Promise<string> => {
-    const base64 = await fileToBase64(file);
-    return await uploadFile(base64, path, file.type);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
+    return await uploadFileFromFormData(formData);
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {

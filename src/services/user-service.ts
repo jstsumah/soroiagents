@@ -116,7 +116,7 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
 
     if (error) {
         console.error('Error updating user:', uid, error);
-        return { success: false };
+        throw error;
     }
 
     console.log('[updateUser] Success. uid=', uid, 'profileData=', profileData);
@@ -415,7 +415,9 @@ const mapUserToProfile = (user: Partial<User>): any => {
     if (user.status !== undefined) profile.status = user.status;
     if (user.role !== undefined) profile.role = user.role;
     if (user.type !== undefined) profile.type = user.type;
-    if (user.companyId !== undefined) profile.company_id = user.companyId;
+    if (user.companyId !== undefined) {
+        profile.company_id = (user.companyId === '' || user.companyId === null) ? null : user.companyId;
+    }
     if (user.phone !== undefined) profile.phone = user.phone;
     if (user.payment_terms !== undefined) profile.payment_terms = user.payment_terms;
     if (user.remarks !== undefined) profile.remarks = user.remarks;

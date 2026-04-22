@@ -18,6 +18,7 @@ import { getUsersByCompanyId } from '@/services/user-service';
 import { getCompany } from '@/services/company-service';
 import { useAuth } from '@/app/app/app-provider';
 import { AdminSetPasswordDialog } from '@/components/auth/admin-set-password-dialog';
+import { formatWebsiteDisplay, ensureHttps } from '@/lib/utils';
 
 export function UserProfileClient({ user, viewingUser }: { user: User, viewingUser: User | null }) {
   const router = useRouter();
@@ -167,7 +168,7 @@ export function UserProfileClient({ user, viewingUser }: { user: User, viewingUs
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <DetailItem label="Company Name" value={companyDetails?.name} />
                                 <DetailItem label="Company Phone" value={companyDetails?.phone} />
-                                <DetailItem label="Website" value={companyDetails?.website_url ? <a href={companyDetails.website_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{companyDetails.website_url}</a> : "N/A"} />
+                                <DetailItem label="Website" value={companyDetails?.website_url ? <a href={ensureHttps(companyDetails.website_url)} target="_blank" rel="noreferrer" className="text-primary hover:underline">{formatWebsiteDisplay(companyDetails.website_url)}</a> : "N/A"} />
                                 <DetailItem label="Street Address" value={companyDetails?.street_address} />
                                 <DetailItem label="City" value={companyDetails?.city} />
                                 <DetailItem label="Postal Address" value={companyDetails?.postal_address} />

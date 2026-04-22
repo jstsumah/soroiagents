@@ -22,7 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, ArrowUpDown, Trash2 } from "lucide-react";
 import type { Company } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, formatWebsiteDisplay, ensureHttps } from "@/lib/utils";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -115,8 +115,8 @@ export function CompanyTable({ companies, onDeleteRequest, onBulkDeleteRequest, 
                  <TableCell>{company.phone || 'N/A'}</TableCell>
                 <TableCell>
                   {company.website_url ? (
-                    <a href={company.website_url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
-                      {company.website_url.replace(/^(https?:\/\/)?(www\.)?/,'')}
+                    <a href={ensureHttps(company.website_url)} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                      {formatWebsiteDisplay(company.website_url)}
                     </a>
                   ) : 'N/A'}
                 </TableCell>

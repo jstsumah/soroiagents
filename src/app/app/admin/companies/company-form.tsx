@@ -21,12 +21,13 @@ import { useToast } from "@/hooks/use-toast";
 import * as React from "react";
 import { FileText, Download, Trash2, Loader2 } from "lucide-react";
 import type { Company, SignedContract, User } from "@/lib/types";
-import { uploadFile } from "@/services/storage-service";
+import { uploadFileFromFormData } from "@/services/storage-service";
 import { addCompany, updateCompany } from "@/services/company-service";
 import { countries } from "@/lib/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/app/app/app-provider";
 import { updateUser } from "@/services/user-service";
+import { formatWebsiteDisplay, ensureHttps } from "@/lib/utils";
 
 const signedContractSchema = z.object({
     name: z.string(),
@@ -121,20 +122,13 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
   };
 
   const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const formatted = formatUrl(e.target.value);
+    const formatted = ensureHttps(e.target.value);
     if (e.target.value !== formatted) {
       form.setValue('website_url', formatted, { shouldValidate: true });
     }
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-    });
-  }
+  // Removed fileToBase64 as we now use FormData for uploads to avoid nesting/size errors.
 
   const handleFileUpload = React.useCallback(async (file: File, docType: 'company_reg_doc' | 'tra_license_doc' | 'contract') => {
     const companyName = form.getValues('name');
@@ -151,8 +145,10 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
     const filePath = `companies/${companyName}/documents/${file.name}`;
     
     try {
-      const base64 = await fileToBase64(file);
-      const url = await uploadFile(base64, filePath, file.type);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', filePath);
+      const url = await uploadFileFromFormData(formData);
       
       const newDoc: SignedContract = {
         name: file.name,
@@ -280,7 +276,7 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
                                         placeholder="website.com" 
                                         {...field}
                                         onBlur={handleUrlBlur}
-                                        value={field.value ?? ''}
+                                        value={formatWebsiteDisplay(field.value) ?? ''}
                                     />
                                 </FormControl>
                                 <FormMessage />

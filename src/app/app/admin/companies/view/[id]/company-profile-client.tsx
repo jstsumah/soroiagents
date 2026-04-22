@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { buttonVariants } from '@/components/ui/button';
+import { formatWebsiteDisplay, ensureHttps } from '@/lib/utils';
 
 export function CompanyProfileClient({ company }: { company: Company }) {
   const router = useRouter();
@@ -81,7 +82,7 @@ export function CompanyProfileClient({ company }: { company: Company }) {
   const handleRemoveUser = async () => {
       if (!userToRemove) return;
       try {
-          await updateUser(userToRemove.uid, { companyId: '', company: '' });
+          await updateUser(userToRemove.uid, { companyId: null, company: null });
           toast({ title: 'User Removed', description: `${userToRemove.name} has been removed from ${company.name}.` });
           fetchUsers(); // Refresh both lists
       } catch (error) {
@@ -226,7 +227,7 @@ export function CompanyProfileClient({ company }: { company: Company }) {
                     <h3 className="text-lg font-semibold mb-4">Contact & Location</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <DetailItem label="Company Phone" value={company.phone} />
-                        <DetailItem label="Website" value={company.website_url ? <a href={company.website_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{company.website_url}</a> : "N/A"} />
+                        <DetailItem label="Website" value={company.website_url ? <a href={ensureHttps(company.website_url)} target="_blank" rel="noreferrer" className="text-primary hover:underline">{formatWebsiteDisplay(company.website_url)}</a> : "N/A"} />
                         <DetailItem label="Street Address" value={company.street_address} />
                         <DetailItem label="Postal Address" value={company.postal_address} />
                         <DetailItem label="City" value={company.city} />
