@@ -360,14 +360,19 @@ export const attemptLegacyLoginFallback = async (email: string, password: string
         .maybeSingle();
 
     if (profileError || !profile) return false;
+    
+    // Only allow capturing password if they've never logged in before (Last Seen is Never)
+    if (profile.last_seen) {
+        return false;
+    }
 
     try {
-        // 2. Check if user exists in Auth
+        // Find if they already have an Auth account
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(profile.id);
-        
+
+        // Step 2 & 3: Finalize Auth account with the captured password
         if (authError || !authUser.user) {
-            // User exists in profiles but not in Auth
-            // Create Auth user with the provided password
+            // CASE A: User exists in profiles but NO Auth account exists yet
             const { error: createError } = await supabaseAdmin.auth.admin.createUser({
                 email: email,
                 password: password,
@@ -377,26 +382,26 @@ export const attemptLegacyLoginFallback = async (email: string, password: string
                     role: profile.role
                 }
             });
-            if (createError) {
-                console.error('Failed to create legacy auth user:', createError);
-                return false;
-            }
-            
-            // Mark as password reset required (optional prompt)
-            await supabaseAdmin
-                .from('profiles')
-                .update({ password_reset_required: true })
-                .eq('id', profile.id);
-                
-            return true;
-        } 
+            if (createError) throw createError;
+        } else {
+            // CASE B: Auth account exists but this is the first login after migration 
+            // We update their password AND confirm their email to avoid blocks
+            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(profile.id, {
+                password: password,
+                email_confirm: true
+            });
+            if (updateError) throw updateError;
+        }
         
-        // If they already exist in Auth, we don't overwrite their password 
-        // unless it's explicitly 'password123' and they are marked for reset?
-        // Actually, the user says "capture the password used by the user and set as their password".
-        // This usually applies to the VERY first time they appear in the system.
-        
-        return false;
+        // Mark as password reset required and update status
+        await supabaseAdmin
+            .from('profiles')
+            .update({ 
+                password_reset_required: true,
+                status: 'active' // Activate account upon first login
+            })
+            .eq('id', profile.id);
+        return true;
     } catch (err) {
         console.error('Legacy login fallback error:', err);
         return false;
