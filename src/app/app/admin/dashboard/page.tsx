@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
       router.replace('/app/agent/dashboard');
       return;
     }
-  }, [user, isAuthLoading, router]);
+  }, [user?.role, isAuthLoading, router]);
 
   React.useEffect(() => {
     const fetchData = async () => {

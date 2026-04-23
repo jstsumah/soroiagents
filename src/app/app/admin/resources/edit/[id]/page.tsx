@@ -19,24 +19,32 @@ export default function EditResourcePage({ params }: { params: { id: string } })
 
 
     React.useEffect(() => {
+        // Permission check
         if (!isAuthLoading && user && !(user.role === 'Admin' || user.role === 'Super Admin')) {
             router.replace('/app/admin/dashboard');
-            return;
         }
-        
-        if(user) {
-            const fetchResource = async () => {
+    }, [user?.role, isAuthLoading, router]);
+
+    React.useEffect(() => {
+        const fetchResource = async () => {
+            // Only show skeleton if we don't have data yet
+            if (!resource) {
                 setIsLoading(true);
+            }
+            try {
                 const data = await getResource(id);
                 if (!data) {
                     notFound();
                 }
                 setResource(data);
+            } catch (error) {
+                console.error("Failed to fetch resource:", error);
+            } finally {
                 setIsLoading(false);
-            };
-            fetchResource();
-        }
-    }, [id, user, isAuthLoading, router]);
+            }
+        };
+        fetchResource();
+    }, [id]); // Only refetch if the ID actually changes
 
 
     if (isLoading || isAuthLoading || !user || !(user.role === 'Admin' || user.role === 'Super Admin')) {

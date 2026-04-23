@@ -29,7 +29,7 @@ export default function AdminSettingsPage() {
     if (!isLoading && user && user.role === 'Agent') {
       router.replace('/app/agent/dashboard');
     }
-  }, [user, isLoading, router]);
+  }, [user?.role, isLoading, router]);
 
   if (isLoading || !user || user.role === 'Agent') {
     return (

@@ -47,32 +47,37 @@ export default function AgentEditCompanyPage() {
     const router = useRouter();
 
     React.useEffect(() => {
+        // Permission check
         if (!isAuthLoading && !user) {
             router.replace('/app/agent/dashboard');
             return;
         }
-        
-        if (user) {
-            if (user.companyId) {
-                const fetchCompany = async () => {
+    }, [user?.uid, isAuthLoading, router]);
+
+    React.useEffect(() => {
+        if (user?.companyId) {
+            const fetchCompany = async () => {
+                // Only show skeleton if we don't have data yet or if it's a different company
+                if (!company || company.id !== user.companyId) {
                     setIsLoading(true);
+                }
+                try {
                     const companyData = await getCompany(user.companyId!);
-                    if (!companyData) {
-                        // This case is unlikely if companyId exists, but handle it.
-                        // Agent can create a new company profile.
-                        setCompany(null);
-                    } else {
+                    if (companyData) {
                         setCompany(companyData);
                     }
+                } catch (error) {
+                    console.error("Failed to fetch company:", error);
+                } finally {
                     setIsLoading(false);
-                };
-                fetchCompany();
-            } else {
-                 // User has no company, they will be creating one
-                 setIsLoading(false);
-            }
+                }
+            };
+            fetchCompany();
+        } else if (user) {
+             // User has no company, they will be creating one
+             setIsLoading(false);
         }
-    }, [user, isAuthLoading, router]);
+    }, [user?.uid, user?.companyId]);
 
 
     if (isLoading || isAuthLoading) {

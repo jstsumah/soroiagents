@@ -157,9 +157,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (session?.user) {
+                // If we already have a user and it's the same ID, we can fetch in background
+                // without showing the global loading skeleton again.
                 fetchProfile(session.user.id);
-            } else {
+            } else if (event === 'SIGNED_OUT') {
                 setUser(null);
+                setActualUser(null);
+                setIsLoading(false);
+            } else if (event === 'INITIAL_SESSION' && !session) {
                 setIsLoading(false);
             }
         });
@@ -168,10 +173,18 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
             isMounted = false;
             subscription.unsubscribe();
         };
-    }, [supabase, router]);
+    }, [supabase]);
+
+    const contextValue = React.useMemo(() => ({ 
+        user, 
+        isLoading, 
+        actualUser, 
+        isImpersonating, 
+        stopImpersonating 
+    }), [user, isLoading, actualUser, isImpersonating, stopImpersonating]);
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, actualUser, isImpersonating, stopImpersonating }}>
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );

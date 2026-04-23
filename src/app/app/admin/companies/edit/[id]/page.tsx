@@ -18,22 +18,33 @@ export default function EditCompanyPage({ params }: { params: { id: string } }) 
     const router = useRouter();
 
     React.useEffect(() => {
+        // Permission check
         if (!isAuthLoading && user && user.role === 'Agent') {
           router.replace('/app/agent/dashboard');
           return;
         }
+    }, [user?.role, isAuthLoading, router]);
 
+    React.useEffect(() => {
         const fetchCompany = async () => {
-            setIsLoading(true);
-            const data = await getCompany(id);
-            if (!data) {
-                notFound();
+            // Only show loading skeleton if we don't have data yet
+            if (!company) {
+                setIsLoading(true);
             }
-            setCompany(data);
-            setIsLoading(false);
+            try {
+                const data = await getCompany(id);
+                if (!data) {
+                    notFound();
+                }
+                setCompany(data);
+            } catch (error) {
+                console.error("Failed to fetch company:", error);
+            } finally {
+                setIsLoading(false);
+            }
         };
         fetchCompany();
-    }, [id, user, isAuthLoading, router]);
+    }, [id]); // Only refetch if the ID actually changes
 
 
     if (isLoading || isAuthLoading) {

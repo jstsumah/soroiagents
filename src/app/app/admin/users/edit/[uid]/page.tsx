@@ -75,30 +75,45 @@ export default function EditUserPage({ params }: { params: { uid: string } }) {
     });
 
     React.useEffect(() => {
+        // Permission check
+        if (!isAuthLoading && viewingUser && viewingUser.role === 'Agent' && viewingUser.uid !== uid) {
+            router.replace('/app/agent/dashboard');
+        }
+    }, [viewingUser?.role, viewingUser?.uid, isAuthLoading, router, uid]);
+
+    React.useEffect(() => {
         const fetchUser = async () => {
-            setIsLoading(true);
-            const userData = await getUser(uid);
-            if (!userData) {
-                notFound();
+            // Only show skeleton if we don't have user data yet
+            if (!user) {
+                setIsLoading(true);
             }
-            setUser(userData);
-            form.reset({
-              ...userData,
-              password: '', // Never populate password field
-              phone: userData.phone || '',
-              company: userData.company || '',
-              companyId: userData.companyId || '',
-              country: userData.country || '',
-              dmc: userData.dmc || '',
-              payment_terms: userData.payment_terms || '',
-              remarks: userData.remarks || '',
-              canViewUsers: userData.canViewUsers || false,
-              hasAllTierAccess: userData.hasAllTierAccess || false,
-            });
-            setIsLoading(false);
+            try {
+                const userData = await getUser(uid);
+                if (!userData) {
+                    notFound();
+                }
+                setUser(userData);
+                form.reset({
+                    ...userData,
+                    password: '', // Never populate password field
+                    phone: userData.phone || '',
+                    company: userData.company || '',
+                    companyId: userData.companyId || '',
+                    country: userData.country || '',
+                    dmc: userData.dmc || '',
+                    payment_terms: userData.payment_terms || '',
+                    remarks: userData.remarks || '',
+                    canViewUsers: userData.canViewUsers || false,
+                    hasAllTierAccess: userData.hasAllTierAccess || false,
+                });
+            } catch (error) {
+                console.error("Failed to fetch user:", error);
+            } finally {
+                setIsLoading(false);
+            }
         };
         fetchUser();
-    }, [uid, form]);
+    }, [uid, form]); // form is stable, uid is the key dependency
 
     async function handleFormSubmit(values: any) {
         setIsSaving(true);
