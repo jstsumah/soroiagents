@@ -26,27 +26,31 @@ export default function AdminRatesPage() {
   const router = useRouter();
 
   React.useEffect(() => {
+    // Permission check
     if (!isAuthLoading && user && user.role === 'Agent') {
       router.replace('/app/agent/dashboard');
-      return;
     }
-  }, [user, isAuthLoading, router]);
-
-  const fetchRates = React.useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const fetchedRates = await getRates();
-      setRates(fetchedRates);
-    } catch (error) {
-      console.error("Failed to fetch rates:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  }, [user?.role, isAuthLoading, router]);
 
   React.useEffect(() => {
-    fetchRates();
-  }, [fetchRates]);
+    if (user) {
+        // Only show loading spinner if we don't have rates yet
+        if (rates.length === 0) {
+            setIsLoading(true);
+        }
+        const fetchData = async () => {
+            try {
+                const fetchedRates = await getRates();
+                setRates(fetchedRates);
+            } catch (error) {
+                console.error("Failed to fetch rates:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }
+  }, [user?.uid]);
 
   const handleDeleteRate = (id: string) => {
     setRates(prevRates => prevRates.filter(rate => rate.id !== id));

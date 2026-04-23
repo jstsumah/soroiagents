@@ -32,45 +32,49 @@ export default function AdminItinerariesPage() {
   const [sortDirection, setSortDirection] = React.useState<SortDirection>('desc');
 
   React.useEffect(() => {
+    // Permission check
     if (!isAuthLoading && viewingUser && viewingUser.role === 'Agent') {
       router.replace('/app/agent/dashboard');
-      return;
     }
-  }, [viewingUser, isAuthLoading, router]);
+  }, [viewingUser?.role, isAuthLoading, router]);
 
   const canEdit = viewingUser?.role === 'Admin' || viewingUser?.role === 'Super Admin';
 
-  const fetchItineraries = React.useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [packagedIts, resourceIts] = await Promise.all([
-        getItineraries(),
-        getResources(),
-      ]);
-
-      const singleIts = resourceIts.filter(r => r.category === 'itineraries');
-
-      const allIts: UnifiedItinerary[] = [
-        ...packagedIts.map(it => ({ ...it, type: 'packaged' as const })),
-        ...singleIts.map(it => ({ ...it, type: 'single' as const }))
-      ];
-
-      setItineraries(allIts);
-    } catch (e) {
-      console.error("Failed to fetch itineraries", e);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not load itineraries.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
   React.useEffect(() => {
-    fetchItineraries();
-  }, [fetchItineraries]);
+    if (viewingUser) {
+        // Only show loading spinner if we don't have itineraries yet
+        if (itineraries.length === 0) {
+            setIsLoading(true);
+        }
+        const fetchData = async () => {
+            try {
+                const [packagedIts, resourceIts] = await Promise.all([
+                    getItineraries(),
+                    getResources(),
+                ]);
+
+                const singleIts = resourceIts.filter(r => r.category === 'itineraries');
+
+                const allIts: UnifiedItinerary[] = [
+                    ...packagedIts.map(it => ({ ...it, type: 'packaged' as const })),
+                    ...singleIts.map(it => ({ ...it, type: 'single' as const }))
+                ];
+
+                setItineraries(allIts);
+            } catch (e) {
+                console.error("Failed to fetch itineraries", e);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Could not load itineraries.",
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }
+  }, [viewingUser?.uid, toast]); // Using viewingUser?.uid instead of full object and fetchItineraries function
 
   const sortedAndFilteredItineraries = React.useMemo(() => {
     let filtered = [...itineraries];

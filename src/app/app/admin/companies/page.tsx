@@ -83,15 +83,36 @@ export default function AdminCompaniesPage() {
   }, [toast]);
 
   React.useEffect(() => {
+    // Permission check
     if (!isAuthLoading && viewingUser && viewingUser.role === 'Agent') {
       router.replace('/app/agent/dashboard');
-      return;
     }
-    
+  }, [viewingUser?.role, isAuthLoading, router]);
+
+  React.useEffect(() => {
     if (!isAuthLoading && viewingUser) {
-      fetchCompanies();
+        // Only show loading spinner if we don't have companies yet
+        if (allCompanies.length === 0) {
+            setIsLoading(true);
+        }
+        const fetchData = async () => {
+            try {
+                const props = await getCompanies();
+                setAllCompanies(props);
+            } catch(e) {
+                console.error("Failed to fetch companies", e)
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Could not load companies from the database.",
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
     }
-  }, [fetchCompanies, viewingUser, isAuthLoading, router]);
+  }, [viewingUser?.uid, isAuthLoading, toast]); // Removed fetchCompanies dependency as it was recreated on every toast change if not careful, and moved logic inside for clarity
 
   const handleDelete = async () => {
     if (!companyToDelete) return;

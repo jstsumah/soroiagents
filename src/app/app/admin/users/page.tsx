@@ -20,16 +20,19 @@ export default function AdminUsersPage() {
   const [isUsersLoading, setIsUsersLoading] = React.useState(true);
 
   React.useEffect(() => {
+    // Permission check
     if (!isAuthLoading && viewingUser && viewingUser.role === 'Agent' && !viewingUser.canViewUsers) {
       router.replace('/app/agent/dashboard');
-      return;
     }
-  }, [viewingUser, isAuthLoading, router]);
+  }, [viewingUser?.role, viewingUser?.canViewUsers, isAuthLoading, router]);
 
   React.useEffect(() => {
     if (viewingUser) {
       const fetchUsers = async () => {
-        setIsUsersLoading(true);
+        // Only show spinner if we don't have users yet
+        if (displayedUsers.length === 0) {
+          setIsUsersLoading(true);
+        }
         try {
           const allUsers = await getUsers();
           if (viewingUser?.role === 'Super Admin' || viewingUser?.role === 'Admin') {
@@ -47,7 +50,7 @@ export default function AdminUsersPage() {
       }
       fetchUsers();
     }
-  }, [viewingUser]);
+  }, [viewingUser?.uid, viewingUser?.role]);
   
   const isLoading = isAuthLoading || isUsersLoading;
   const canManageUsers = viewingUser?.role === 'Admin' || viewingUser?.role === 'Super Admin';

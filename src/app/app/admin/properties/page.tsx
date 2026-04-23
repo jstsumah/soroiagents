@@ -31,36 +31,38 @@ export default function AdminPropertiesPage() {
   const router = useRouter();
 
   React.useEffect(() => {
+    // Permission check
     if (!isAuthLoading && viewingUser && viewingUser.role === 'Agent') {
       router.replace('/app/agent/dashboard');
-      return;
     }
-  }, [viewingUser, isAuthLoading, router]);
+  }, [viewingUser?.role, isAuthLoading, router]);
 
   const canEdit = viewingUser?.role === 'Admin' || viewingUser?.role === 'Super Admin';
 
-  const fetchProperties = React.useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const props = await getProperties();
-      setProperties(props);
-    } catch(e) {
-      console.error("Failed to fetch properties", e)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not load properties from the database.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
   React.useEffect(() => {
     if (!isAuthLoading && viewingUser) {
-      fetchProperties();
+        // Only show loading spinner if we don't have properties yet
+        if (properties.length === 0) {
+            setIsLoading(true);
+        }
+        const fetchData = async () => {
+            try {
+                const props = await getProperties();
+                setProperties(props);
+            } catch(e) {
+                console.error("Failed to fetch properties", e)
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Could not load properties from the database.",
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
     }
-  }, [fetchProperties, viewingUser, isAuthLoading]);
+  }, [viewingUser?.uid, isAuthLoading, toast]); // Using viewingUser?.uid instead of full object and fetchProperties function
 
   const handleDelete = async () => {
     if (!propertyToDelete) return;
