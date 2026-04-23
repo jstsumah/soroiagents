@@ -37,7 +37,7 @@ import { useRouter } from "next/navigation";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Exclude categories that have their own dedicated pages from the dropdown
-const DOWNLOAD_CATEGORIES: Category[] = ['brochures', 'images', 'factsheet', 'videos', 'activity-sheets', 'itineraries', 'spa-menu'];
+const DOWNLOAD_CATEGORIES: Category[] = ['brochures', 'images', 'factsheet', 'videos', 'activity-sheets', 'itineraries', 'spa-menu', 'how-to-get-there'];
 
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters long."),

@@ -25,7 +25,7 @@ import {
 import { useAuth } from '@/app/app/app-provider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const DOWNLOAD_CATEGORIES: Category[] = ['brochures', 'factsheet', 'activity-sheets', 'spa-menu', 'images', 'videos'];
+const DOWNLOAD_CATEGORIES: Category[] = ['how-to-get-there', 'brochures', 'factsheet', 'activity-sheets', 'spa-menu', 'images', 'videos'];
 
 type SortKey = 'title' | 'uploaded_at' | 'category';
 type SortDirection = 'asc' | 'desc';
@@ -217,11 +217,11 @@ export default function AdminDownloadsPage() {
         </div>
         ) : (
           <Tabs defaultValue="all">
-            <TabsList className="grid w-full grid-cols-1 md:grid-cols-7">
+            <TabsList className="flex flex-wrap h-auto w-full justify-start gap-1 p-1 md:grid md:grid-cols-8">
               <TabsTrigger value="all">All</TabsTrigger>
               {DOWNLOAD_CATEGORIES.map(category => (
-                <TabsTrigger key={category} value={category} className="capitalize">
-                    {category === 'activity-sheets' ? 'Activities' : category.replace('-', ' ')}
+                <TabsTrigger key={category} value={category} className="capitalize px-4">
+                    {category === 'activity-sheets' ? 'Activities' : category === 'how-to-get-there' ? 'How To Get There' : category.replace('-', ' ')}
                 </TabsTrigger>
               ))}
             </TabsList>
