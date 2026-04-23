@@ -45,7 +45,7 @@ export default function LoginPage() {
   const loginBgColor = companyDetails?.loginBgColor || '#FFFFFF';
 
   const bgStyle = loginBgType === 'image' && loginBgUrl 
-    ? { backgroundImage: `url(${loginBgUrl})` }
+    ? { backgroundImage: `url('${loginBgUrl}')` }
     : { backgroundColor: loginBgColor };
 
   return (

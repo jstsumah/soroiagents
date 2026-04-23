@@ -20,6 +20,7 @@ import { Save, Loader2, RefreshCw } from "lucide-react";
 import { getMarkdownTheme, saveMarkdownTheme } from "@/services/settings-service";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { MarkdownTheme } from "@/lib/types";
+import { Control } from "react-hook-form";
 
 const hexColorSchema = z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Must be a valid hex color");
 
@@ -52,6 +53,32 @@ const defaultTheme: MarkdownTheme = {
         bullets: "#999999",
     }
 };
+
+// Stable sub-component outside the parent — prevents remount on every render
+function ColorInput({ name, label, control }: {
+  name: `light.${keyof MarkdownTheme['light']}` | `dark.${keyof MarkdownTheme['dark']}`;
+  label: string;
+  control: Control<z.infer<typeof formSchema>>;
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <div className="flex items-center gap-2">
+            <FormControl>
+              <Input placeholder="#RRGGBB" {...field} />
+            </FormControl>
+            <div className="h-10 w-16 rounded-md border" style={{ backgroundColor: field.value }} />
+          </div>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
 
 export function MarkdownThemeForm() {
   const { toast } = useToast();
@@ -91,24 +118,7 @@ export function MarkdownThemeForm() {
     });
   }
 
-  const ColorInput = ({ name, label }: { name: `light.${keyof MarkdownTheme['light']}` | `dark.${keyof MarkdownTheme['dark']}`, label: string }) => (
-    <FormField
-        control={form.control}
-        name={name}
-        render={({ field }) => (
-        <FormItem>
-            <FormLabel>{label}</FormLabel>
-            <div className="flex items-center gap-2">
-                <FormControl>
-                    <Input placeholder="#RRGGBB" {...field} />
-                </FormControl>
-                <div className="h-10 w-16 rounded-md border" style={{ backgroundColor: field.value }}></div>
-            </div>
-            <FormMessage />
-        </FormItem>
-        )}
-    />
-  );
+
   
   if (isLoading) {
     return (
@@ -130,17 +140,17 @@ export function MarkdownThemeForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4 rounded-md border p-4">
                     <h4 className="font-medium text-lg">Light Theme</h4>
-                    <ColorInput name="light.body" label="Body Text" />
-                    <ColorInput name="light.headings" label="Headings" />
-                    <ColorInput name="light.links" label="Links" />
-                    <ColorInput name="light.bullets" label="Bullets" />
+                    <ColorInput name="light.body" label="Body Text" control={form.control} />
+                    <ColorInput name="light.headings" label="Headings" control={form.control} />
+                    <ColorInput name="light.links" label="Links" control={form.control} />
+                    <ColorInput name="light.bullets" label="Bullets" control={form.control} />
                 </div>
                  <div className="space-y-4 rounded-md border p-4 bg-muted/30">
                     <h4 className="font-medium text-lg">Dark Theme</h4>
-                    <ColorInput name="dark.body" label="Body Text" />
-                    <ColorInput name="dark.headings" label="Headings" />
-                    <ColorInput name="dark.links" label="Links" />
-                    <ColorInput name="dark.bullets" label="Bullets" />
+                    <ColorInput name="dark.body" label="Body Text" control={form.control} />
+                    <ColorInput name="dark.headings" label="Headings" control={form.control} />
+                    <ColorInput name="dark.links" label="Links" control={form.control} />
+                    <ColorInput name="dark.bullets" label="Bullets" control={form.control} />
                 </div>
             </div>
         <div className="flex justify-end gap-2">

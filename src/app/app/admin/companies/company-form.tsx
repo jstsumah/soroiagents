@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/app/app/app-provider";
 import { updateUser } from "@/services/user-service";
 import { formatWebsiteDisplay, ensureHttps } from "@/lib/utils";
+import { Control } from "react-hook-form";
 
 const signedContractSchema = z.object({
     name: z.string(),
@@ -62,6 +63,77 @@ const formSchema = z.object({
   company_reg_doc: z.any().refine((val) => val !== null && val !== undefined, "Company registration document is required."),
   tra_license_doc: signedContractSchema.optional().nullable(),
 });
+
+// ── Stable sub-component defined OUTSIDE the parent so its identity never
+// changes between renders. Defining it inside a render function causes React
+// to unmount/remount it every render, clearing filled inputs.
+interface DocumentUploadFieldProps {
+  doc: SignedContract | undefined | null;
+  onFileChange: (file: File) => void;
+  onRemove: () => void;
+  label: string;
+  formName: "company_reg_doc_file" | "tra_license_doc_file";
+  control: Control<z.infer<typeof formSchema>>;
+}
+
+function DocumentUploadField({
+  doc,
+  onFileChange,
+  onRemove,
+  label,
+  formName,
+  control,
+}: DocumentUploadFieldProps) {
+  return (
+    <div>
+      {doc ? (
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <div className="flex items-center gap-3">
+            <FileText className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">
+                {doc.name}
+              </a>
+              <p className="text-sm text-muted-foreground">
+                Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+          <Button type="button" variant="destructive" size="sm" onClick={onRemove}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Remove
+          </Button>
+        </div>
+      ) : (
+        <FormField
+          control={control}
+          name={formName}
+          render={({ field: { onChange, ...fieldProps } }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-1">
+                {label}
+                {formName === "company_reg_doc_file" && (
+                  <span className="text-destructive">*</span>
+                )}
+              </FormLabel>
+              <FormControl>
+                <Input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e: any) =>
+                    e.target.files?.[0] && onFileChange(e.target.files[0])
+                  }
+                  {...fieldProps}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+    </div>
+  );
+}
 
 interface CompanyFormProps {
   company?: Company;
@@ -220,33 +292,7 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
       } 
     : defaultOnSubmit;
   
-  const DocumentUploadField = ({ doc, onFileChange, onRemove, label, formName }: { doc: SignedContract | undefined | null, onFileChange: (file: File) => void, onRemove: () => void, label: string, formName: "company_reg_doc_file" | "tra_license_doc_file" }) => (
-    <div>
-      {doc ? (
-        <div className="flex items-center justify-between rounded-md border p-3">
-          <div className="flex items-center gap-3">
-            <FileText className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">{doc.name}</a>
-              <p className="text-sm text-muted-foreground">Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}</p>
-            </div>
-          </div>
-          <Button type="button" variant="destructive" size="sm" onClick={onRemove}><Trash2 className="mr-2 h-4 w-4"/>Remove</Button>
-        </div>
-      ) : (
-        <FormField control={form.control} name={formName} render={({ field: { onChange, ...fieldProps } }) => (
-          <FormItem>
-            <FormLabel className="flex items-center gap-1">
-              {label}
-              {formName === "company_reg_doc_file" && <span className="text-destructive">*</span>}
-            </FormLabel>
-            <FormControl><Input type="file" accept="image/*,.pdf" onChange={(e: any) => e.target.files?.[0] && onFileChange(e.target.files[0])} {...fieldProps} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
-      )}
-    </div>
-  );
+
 
   return (
     <Form {...form}>
@@ -308,6 +354,7 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
                             doc={companyRegDoc}
                             onFileChange={(file) => handleFileUpload(file, 'company_reg_doc')}
                             onRemove={() => form.setValue('company_reg_doc', null)}
+                            control={form.control}
                         />
                     </div>
                     <div className="space-y-2">
@@ -318,6 +365,7 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
                             doc={traLicenseDoc}
                             onFileChange={(file) => handleFileUpload(file, 'tra_license_doc')}
                             onRemove={() => form.setValue('tra_license_doc', null)}
+                            control={form.control}
                         />
                     </div>
                 </div>

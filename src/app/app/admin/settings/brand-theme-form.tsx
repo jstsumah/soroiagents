@@ -19,12 +19,39 @@ import { useToast } from "@/hooks/use-toast";
 import { Paintbrush, Loader2 } from "lucide-react";
 import { getBrandTheme, saveBrandTheme } from "@/services/settings-service";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Control } from "react-hook-form";
 
 const formSchema = z.object({
   primary: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Must be a valid hex color"),
   background: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Must be a valid hex color"),
   accent: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Must be a valid hex color"),
 });
+
+// Stable sub-component outside the parent — prevents remount on every render
+function ColorInput({ name, label, control }: {
+  name: keyof z.infer<typeof formSchema>;
+  label: string;
+  control: Control<z.infer<typeof formSchema>>;
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <div className="flex items-center gap-2">
+            <FormControl>
+              <Input placeholder="#RRGGBB" {...field} />
+            </FormControl>
+            <div className="h-10 w-16 rounded-md border" style={{ backgroundColor: field.value }} />
+          </div>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
 
 // Function to convert hex to HSL string
 const hexToHslString = (hex: string): string => {
@@ -105,24 +132,7 @@ export function BrandThemeForm() {
     });
   }
 
-  const ColorInput = ({ name, label }: { name: keyof z.infer<typeof formSchema>, label: string }) => (
-    <FormField
-        control={form.control}
-        name={name}
-        render={({ field }) => (
-        <FormItem>
-            <FormLabel>{label}</FormLabel>
-            <div className="flex items-center gap-2">
-                <FormControl>
-                    <Input placeholder="#RRGGBB" {...field} />
-                </FormControl>
-                <div className="h-10 w-16 rounded-md border" style={{ backgroundColor: field.value }}></div>
-            </div>
-            <FormMessage />
-        </FormItem>
-        )}
-    />
-  );
+
   
   if (isLoading) {
     return (
@@ -144,9 +154,9 @@ export function BrandThemeForm() {
     <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid md:grid-cols-3 gap-6">
-            <ColorInput name="primary" label="Primary Color" />
-            <ColorInput name="background" label="Background Color" />
-            <ColorInput name="accent" label="Accent Color" />
+            <ColorInput name="primary" label="Primary Color" control={form.control} />
+            <ColorInput name="background" label="Background Color" control={form.control} />
+            <ColorInput name="accent" label="Accent Color" control={form.control} />
         </div>
         <div className="flex justify-end">
             <Button type="submit" disabled={isSaving}>

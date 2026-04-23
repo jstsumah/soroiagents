@@ -22,6 +22,7 @@ import { TIERS } from "@/lib/constants";
 import type { Tier, TierCommissions } from "@/lib/types";
 import { saveTierCommissions, getTierCommissions } from "@/services/settings-service";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Control } from "react-hook-form";
 
 const formSchema = z.object({
   Brass: z.coerce.number().min(0, "Cannot be negative.").max(100, "Cannot exceed 100."),
@@ -33,6 +34,32 @@ const formSchema = z.object({
   Platinum: z.coerce.number().min(0, "Cannot be negative.").max(100, "Cannot exceed 100."),
   "Rack Rates": z.coerce.number().min(0, "Cannot be negative.").max(100, "Cannot exceed 100."),
 });
+
+// Stable sub-component outside the parent — prevents remount on every render
+function CommissionInput({ name, label, control }: {
+  name: Tier;
+  label: string;
+  control: Control<z.infer<typeof formSchema>>;
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <div className="relative">
+            <FormControl>
+              <Input type="number" placeholder="e.g. 15" {...field} className="pr-8" />
+            </FormControl>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground text-sm">%</div>
+          </div>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
 
 
 export function TierCommissionForm() {
@@ -77,24 +104,7 @@ export function TierCommissionForm() {
     });
   }
 
-  const CommissionInput = ({ name, label }: { name: Tier, label: string }) => (
-    <FormField
-        control={form.control}
-        name={name}
-        render={({ field }) => (
-        <FormItem>
-            <FormLabel>{label}</FormLabel>
-            <div className="relative">
-                <FormControl>
-                    <Input type="number" placeholder="e.g. 15" {...field} className="pr-8" />
-                </FormControl>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground text-sm">%</div>
-            </div>
-            <FormMessage />
-        </FormItem>
-        )}
-    />
-  );
+
   
   if (isLoading) {
     return (
@@ -114,7 +124,7 @@ export function TierCommissionForm() {
     <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {TIERS.map(tier => <CommissionInput key={tier} name={tier} label={tier} />)}
+                {TIERS.map(tier => <CommissionInput key={tier} name={tier} label={tier} control={form.control} />)}
             </div>
             <div className="flex justify-end">
                 <Button type="submit" disabled={isSaving}>

@@ -21,6 +21,7 @@ import { TIERS } from "@/lib/constants";
 import type { Tier } from "@/lib/types";
 import { saveTierColors, getTierColors } from "@/services/settings-service";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Control } from "react-hook-form";
 
 const hexColorSchema = z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Must be a valid hex color");
 
@@ -36,6 +37,32 @@ const formSchema = z.object({
 });
 
 type TierColors = Record<Tier, string>;
+
+// Stable sub-component outside the parent — prevents remount on every render
+function ColorInput({ name, label, control }: {
+  name: Tier;
+  label: string;
+  control: Control<z.infer<typeof formSchema>>;
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <div className="flex items-center gap-2">
+            <FormControl>
+              <Input placeholder="#RRGGBB" {...field} />
+            </FormControl>
+            <div className="h-10 w-16 rounded-md border" style={{ backgroundColor: field.value }} />
+          </div>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
 
 export function TierColorsForm() {
   const { toast } = useToast();
@@ -91,24 +118,7 @@ export function TierColorsForm() {
     });
   }
 
-  const ColorInput = ({ name, label }: { name: Tier, label: string }) => (
-    <FormField
-        control={form.control}
-        name={name}
-        render={({ field }) => (
-        <FormItem>
-            <FormLabel>{label}</FormLabel>
-            <div className="flex items-center gap-2">
-                <FormControl>
-                    <Input placeholder="#RRGGBB" {...field} />
-                </FormControl>
-                <div className="h-10 w-16 rounded-md border" style={{ backgroundColor: field.value }}></div>
-            </div>
-            <FormMessage />
-        </FormItem>
-        )}
-    />
-  );
+
   
   if (isLoading) {
     return (
@@ -128,7 +138,7 @@ export function TierColorsForm() {
     <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {TIERS.map(tier => <ColorInput key={tier} name={tier} label={tier} />)}
+                {TIERS.map(tier => <ColorInput key={tier} name={tier} label={tier} control={form.control} />)}
             </div>
             <div className="flex justify-end">
                 <Button type="submit" disabled={isSaving}>

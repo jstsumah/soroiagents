@@ -68,6 +68,33 @@ interface EditUserFormProps {
   onSubmit: (values: any) => void;
 }
 
+// ── Stable sub-components defined OUTSIDE the parent so React never sees
+// a new component type on re-render (which would unmount/remount and clear inputs).
+function DetailItem({ label, value, children }: { label: string; value?: string | React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      {value ? <div className="text-base font-semibold">{value}</div> : null}
+      {children}
+    </div>
+  );
+}
+
+function DocumentLink({ doc, label }: { doc?: SignedContract; label: string }) {
+  return (
+    <DetailItem label={label}>
+      {doc?.url ? (
+        <a href={doc.url} download={doc.name} className="flex items-center gap-2 text-primary hover:underline">
+          <Download className="h-4 w-4" />
+          <span>{doc.name}</span>
+        </a>
+      ) : (
+        <p className="text-base font-semibold">Not Uploaded</p>
+      )}
+    </DetailItem>
+  );
+}
+
 const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) => {
   const { toast } = useToast();
   const { user: viewingUser } = useAuth();
@@ -120,24 +147,7 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
     }
   }, [companyId]);
 
-  const DetailItem = ({ label, value, children }: { label: string, value?: string | React.ReactNode, children?: React.ReactNode }) => (
-    <div className="space-y-1">
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        {value ? <div className="text-base font-semibold">{value}</div> : null}
-        {children}
-    </div>
-  );
-  
-  const DocumentLink = ({ doc, label }: { doc?: SignedContract, label: string }) => (
-    <DetailItem label={label}>
-        {doc?.url ? (
-            <a href={doc.url} download={doc.name} className="flex items-center gap-2 text-primary hover:underline">
-                <Download className="h-4 w-4" />
-                <span>{doc.name}</span>
-            </a>
-        ) : <p className="text-base font-semibold">Not Uploaded</p>}
-    </DetailItem>
-  );
+
 
   return (
     <form onSubmit={onSubmit}>
