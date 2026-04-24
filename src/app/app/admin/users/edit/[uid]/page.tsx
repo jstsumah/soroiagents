@@ -64,7 +64,7 @@ export default function EditUserPage({ params }: { params: { uid: string } }) {
     const { uid } = React.use(params);
     const { toast } = useToast();
     const router = useRouter();
-    const { user: viewingUser } = useAuth();
+    const { user: viewingUser, isLoading: isAuthLoading } = useAuth();
     const [user, setUser] = React.useState<User | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
