@@ -121,6 +121,8 @@ export function AdminDealCard({ deal, onDelete }: AdminDealCardProps) {
           <h2 className="text-lg font-semibold tracking-tight mb-2">{deal.title}</h2>
           <a
             href={deal.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             download
             className="text-accent font-semibold hover:underline text-lg"
           >
