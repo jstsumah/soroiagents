@@ -71,12 +71,12 @@ export function FlightRoutesImageForm() {
         title: "Image Saved!",
         description: "The flight routes image has been updated.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not save the flight routes image.",
+        description: error.message || "Could not save the flight routes image.",
       });
     } finally {
         setIsSaving(false);

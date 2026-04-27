@@ -138,12 +138,12 @@ const EditRateFormComponent = ({ rate }: EditRateFormProps) => {
       router.push('/app/admin/resources/rates');
       router.refresh();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating rate card:", error);
       toast({
         variant: "destructive",
         title: "Error Updating Rate Card",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
       });
     } finally {
         setIsUploading(false);

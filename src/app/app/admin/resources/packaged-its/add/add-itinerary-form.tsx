@@ -190,12 +190,12 @@ const ItineraryFormComponent = ({ itinerary }: ItineraryFormProps) => {
 
       router.push('/app/admin/resources/packaged-its');
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving itinerary:", error);
       toast({
         variant: "destructive",
         title: "Error saving itinerary",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
       });
     }
   }

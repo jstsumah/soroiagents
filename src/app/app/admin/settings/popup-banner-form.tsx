@@ -124,12 +124,12 @@ export function PopupBannerForm() {
       // Notify other components that settings have changed
       settingsEmitter.emit();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not save the popup banner settings.",
+        description: error.message || "Could not save the popup banner settings.",
       });
     } finally {
       setIsSaving(false);

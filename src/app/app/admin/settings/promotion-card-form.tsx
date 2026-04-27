@@ -123,11 +123,12 @@ export function PromotionCardForm() {
         title: "Promotion Saved!",
         description: "The promotion card has been updated.",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error(error);
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not save the promotion card.",
+        description: error.message || "Could not save the promotion card.",
       });
     } finally {
         setIsSaving(false);

@@ -94,12 +94,12 @@ export function LoginBackgroundForm() {
         title: "Background Saved!",
         description: "The login page background has been updated.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not save the login page background.",
+        description: error.message || "Could not save the login page background.",
       });
     } finally {
         setIsSaving(false);

@@ -9,13 +9,25 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 export const uploadFile = async (base64OrBuffer: string, path: string, contentType: string): Promise<string> => {
     try {
         const supabase = getSupabaseAdmin();
-        // The base64 string might be a data URL, so we need to extract just the data part.
-        const base64Data = base64OrBuffer.split(',')[1] || base64OrBuffer;
-        const buffer = Buffer.from(base64Data, 'base64');
-
-        // We use 'soroi' as the default bucket name. 
-        // Ensure this bucket is created and public if you want public URLs.
         const bucketName = 'soroi';
+
+        // Ensure bucket exists (best effort for admin client)
+        try {
+            await supabase.storage.createBucket(bucketName, { public: true });
+        } catch (e) {
+            // Likely already exists
+        }
+
+        // The base64 string might be a data URL, so we need to extract just the data part.
+        let buffer: Buffer;
+        if (base64OrBuffer.startsWith('data:')) {
+            const base64Data = base64OrBuffer.split(',')[1] || base64OrBuffer;
+            buffer = Buffer.from(base64Data, 'base64');
+        } else {
+            buffer = Buffer.from(base64OrBuffer);
+        }
+
+        console.log(`[Storage] Uploading to ${path} (${buffer.length} bytes, type: ${contentType})`);
 
         const { data, error } = await supabase.storage
             .from(bucketName)
@@ -26,7 +38,7 @@ export const uploadFile = async (base64OrBuffer: string, path: string, contentTy
 
         if (error) {
             console.error('Supabase Storage Upload Error:', error);
-            throw error;
+            throw new Error(`Storage error: ${error.message} (${(error as any).status || 'no status'})`);
         }
 
         const { data: { publicUrl } } = supabase.storage
@@ -53,29 +65,39 @@ export const uploadFileFromFormData = async (formData: FormData): Promise<string
         }
 
         // In some environments, instanceof File might fail, so we check for essential properties
-        const isFileLike = file && typeof (file as any).arrayBuffer === 'function' && (file as any).name !== undefined;
+        const isFileLike = file && typeof (file as any).arrayBuffer === 'function';
         
         if (!isFileLike) {
              throw new Error(`The provided "file" is not a valid File/Blob object. Type: ${typeof file}`);
         }
 
         const supabase = getSupabaseAdmin();
+        const bucketName = 'soroi';
+
+        // Ensure bucket exists (best effort for admin client)
+        try {
+            await supabase.storage.createBucket(bucketName, { public: true });
+        } catch (e) {
+            // Likely already exists
+        }
+
         const fileObject = file as unknown as File;
         const arrayBuffer = await fileObject.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
+        const contentType = fileObject.type || 'application/octet-stream';
 
-        const bucketName = 'soroi';
+        console.log(`[Storage] Uploading FormData file to ${path} (${buffer.length} bytes, type: ${contentType})`);
 
         const { data, error } = await supabase.storage
             .from(bucketName)
             .upload(path, buffer, {
-                contentType: file.type,
+                contentType: contentType,
                 upsert: true
             });
 
         if (error) {
-            console.error('Supabase Storage Upload Error:', error);
-            throw error;
+            console.error('Supabase Storage FormData Upload Error:', error);
+            throw new Error(`Storage error: ${error.message} (${(error as any).status || 'no status'})`);
         }
 
         const { data: { publicUrl } } = supabase.storage

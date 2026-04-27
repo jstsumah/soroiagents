@@ -370,12 +370,12 @@ export function HowToGetThereForm({ locationData }: { locationData?: HowToGetThe
         }
         router.push('/app/admin/resources/how-to-get-there');
         router.refresh();
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error saving location:", error);
         toast({
             variant: "destructive",
             title: "Save Failed",
-            description: "An unexpected error occurred. Please try again.",
+            description: error.message || "An unexpected error occurred. Please try again.",
         });
     }
   }

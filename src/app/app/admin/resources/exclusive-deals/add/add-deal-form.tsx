@@ -112,12 +112,12 @@ export function AddDealForm() {
 
       router.push('/app/admin/resources/exclusive-deals');
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
        console.error("Error adding deal:", error);
        toast({
         variant: "destructive",
         title: "Error Adding Deal",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
       });
     }
   }

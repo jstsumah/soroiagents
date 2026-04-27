@@ -176,12 +176,12 @@ export function ResourceUploadForm({ isItinerary = false }: ResourceUploadFormPr
       const redirectUrl = isItinerary ? '/app/admin/resources/packaged-its' : '/app/admin/resources/downloads';
       router.push(redirectUrl);
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
        console.error("Error uploading resource:", error);
        toast({
         variant: "destructive",
         title: "Upload Failed",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
       });
     }
   }
