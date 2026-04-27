@@ -129,12 +129,12 @@ export function AddRateForm() {
       router.push('/app/admin/resources/rates');
       router.refresh();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding rate card:", error);
       toast({
         variant: "destructive",
         title: "Error Adding Rate Card",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
       });
     } finally {
         setIsUploading(false);

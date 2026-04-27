@@ -182,12 +182,12 @@ const AddPropertyFormComponent = ({ property }: AddPropertyFormProps) => {
       router.push('/app/admin/properties');
       router.refresh();
 
-    } catch (error) {
+    } catch (error: any) {
        console.error("Error saving property:", error);
        toast({
         variant: "destructive",
         title: "Error saving property",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
       });
     }
   }

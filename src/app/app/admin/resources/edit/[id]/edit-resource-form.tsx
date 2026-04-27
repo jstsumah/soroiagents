@@ -117,12 +117,12 @@ const EditResourceFormComponent = ({ resource }: EditResourceFormProps) => {
       });
       router.push('/app/admin/resources/downloads');
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
        console.error("Error updating resource:", error);
        toast({
         variant: "destructive",
         title: "Update Failed",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
       });
     }
   }

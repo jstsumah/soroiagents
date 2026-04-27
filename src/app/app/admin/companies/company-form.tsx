@@ -246,9 +246,13 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
       fieldUpdates[docType]();
 
       toast({ title: "Document Uploaded", description: `${newDoc.name} is ready. Save changes to confirm.` });
-    } catch (error) {
+    } catch (error: any) {
       console.error('File upload failed', error);
-      toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload the file.' });
+      toast({ 
+        variant: 'destructive', 
+        title: 'Upload Failed', 
+        description: error.message || 'Could not upload the file.' 
+      });
     }
   }, [form, toast, append]);
 

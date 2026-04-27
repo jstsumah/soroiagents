@@ -119,12 +119,12 @@ export function AddTrainingForm({ trainingResource }: AddTrainingFormProps) {
             });
             router.push('/app/admin/resources/training');
             router.refresh();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error saving training resource:", error);
             toast({
                 variant: "destructive",
                 title: "Save Failed",
-                description: "An unexpected error occurred while saving the resource."
+                description: error.message || "An unexpected error occurred while saving the resource."
             });
         }
     });
