@@ -111,6 +111,18 @@ export const addRate = async (data: Omit<Rate, 'id'>): Promise<string> => {
 
 export const updateRate = async (id: string, data: Partial<Rate>): Promise<void> => {
     const user = await ensureAdmin();
+    const oldRate = await getRate(id);
+
+    // Identify files to delete if they are being replaced
+    if (oldRate) {
+        if (data.fileUrl && oldRate.fileUrl && data.fileUrl !== oldRate.fileUrl) {
+            await deleteFile(oldRate.fileUrl).catch(e => console.error('Cleanup error (file):', e));
+        }
+        if (data.imageUrl && oldRate.imageUrl && data.imageUrl !== oldRate.imageUrl) {
+            await deleteFile(oldRate.imageUrl).catch(e => console.error('Cleanup error (image):', e));
+        }
+    }
+
     const dbData = mapRateToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin

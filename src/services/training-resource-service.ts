@@ -114,6 +114,15 @@ export const addTrainingResource = async (data: Omit<TrainingResource, 'id'>): P
 
 export const updateTrainingResource = async (id: string, data: Partial<Omit<TrainingResource, 'id' | 'uploaded_at'>>): Promise<void> => {
     const user = await ensureAdmin();
+    const oldResource = await getTrainingResource(id);
+
+    // Identify files to delete if they are being replaced
+    if (oldResource) {
+        if (data.fileUrl && oldResource.fileUrl && data.fileUrl !== oldResource.fileUrl) {
+            await deleteFile(oldResource.fileUrl).catch(e => console.error('Cleanup error (file):', e));
+        }
+    }
+
     const dbData = mapTrainingResourceToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin

@@ -111,6 +111,18 @@ export const addResource = async (data: Omit<Resource, 'id'>): Promise<string> =
 
 export const updateResource = async (id: string, data: Partial<Resource>): Promise<void> => {
     const user = await ensureAdmin();
+    const oldResource = await getResource(id);
+
+    // Identify files to delete if they are being replaced
+    if (oldResource) {
+        if (data.fileUrl && oldResource.fileUrl && data.fileUrl !== oldResource.fileUrl) {
+            await deleteFile(oldResource.fileUrl).catch(e => console.error('Cleanup error (file):', e));
+        }
+        if (data.imageUrl && oldResource.imageUrl && data.imageUrl !== oldResource.imageUrl) {
+            await deleteFile(oldResource.imageUrl).catch(e => console.error('Cleanup error (image):', e));
+        }
+    }
+
     const dbData = mapResourceToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin

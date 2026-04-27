@@ -72,6 +72,15 @@ export const addProperty = async (data: any): Promise<string> => {
 
 export const updateProperty = async (id: string, data: any): Promise<void> => {
     const user = await ensureAdmin();
+    const oldProperty = await getProperty(id);
+
+    // Identify images to delete if they are being replaced or removed
+    if (oldProperty && data.images && Array.isArray(data.images)) {
+        const removedImages = oldProperty.images.filter(img => !data.images.includes(img));
+        for (const imgUrl of removedImages) {
+            await deleteFile(imgUrl).catch(e => console.error('Cleanup error:', e));
+        }
+    }
 
     const dbData = mapPropertyToDb(data);
     const supabaseAdmin = getSupabaseAdmin();

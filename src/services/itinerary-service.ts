@@ -128,6 +128,19 @@ export const addItinerary = async (data: Omit<PackagedItinerary, 'id'>): Promise
 
 export const updateItinerary = async (id: string, data: Partial<PackagedItinerary>): Promise<void> => {
     const user = await ensureAdmin();
+    const oldItinerary = await getItinerary(id);
+
+    // Identify files to delete if they are being replaced
+    if (oldItinerary && data.packages) {
+        const oldFiles = extractItineraryFiles(oldItinerary);
+        const newFiles = extractItineraryFiles(data as PackagedItinerary);
+        const removedFiles = oldFiles.filter(f => !newFiles.includes(f));
+        
+        for (const fileUrl of removedFiles) {
+            await deleteFile(fileUrl).catch(e => console.error('Cleanup error:', e));
+        }
+    }
+
     const dbData = mapItineraryToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
@@ -150,6 +163,21 @@ export const updateItinerary = async (id: string, data: Partial<PackagedItinerar
     } catch (e) {
         console.error('Could not log itinerary update activity:', e);
     }
+};
+
+/**
+ * Extracts all storage file URLs from an itinerary object
+ */
+const extractItineraryFiles = (itinerary: PackagedItinerary): string[] => {
+    const files: string[] = [];
+    if (!itinerary.packages) return files;
+    
+    for (const pkg of itinerary.packages) {
+        if (pkg.driveIn?.type === 'file' && pkg.driveIn.value) files.push(pkg.driveIn.value);
+        if (pkg.flyIn?.type === 'file' && pkg.flyIn.value) files.push(pkg.flyIn.value);
+        if (pkg.railSafari?.type === 'file' && pkg.railSafari.value) files.push(pkg.railSafari.value);
+    }
+    return files;
 };
 
 export const deleteItinerary = async (id: string): Promise<void> => {
