@@ -2,11 +2,14 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Rate } from '@/lib/types';
-import { getAuthenticatedUser } from './auth-service';
+import { getAuthenticatedUser, ensureAdmin, isAdmin } from './auth-service';
 import { logActivity } from './audit-log-service';
 import { deleteFile } from './storage-service';
 
 export const getRates = async (): Promise<Rate[]> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('rates')
@@ -18,10 +21,31 @@ export const getRates = async (): Promise<Rate[]> => {
         return [];
     }
 
-    return (data || []).map(mapDbToRate);
+    let rates = (data || []).map(mapDbToRate);
+
+    // If not admin, filter by tier and user type access
+    if (!isAdmin(user)) {
+        rates = rates.filter(rate => {
+            const hasTierAccess = !rate.tier_access || 
+                                 rate.tier_access.length === 0 || 
+                                 rate.tier_access.includes(user.tier || 'Brass') ||
+                                 user.hasAllTierAccess;
+            
+            const hasTypeAccess = !rate.user_type_access || 
+                                 rate.user_type_access.length === 0 || 
+                                 rate.user_type_access.includes(user.type || 'international');
+            
+            return hasTierAccess && hasTypeAccess;
+        });
+    }
+
+    return rates;
 };
 
 export const getRate = async (id: string): Promise<Rate | null> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('rates')
@@ -34,10 +58,28 @@ export const getRate = async (id: string): Promise<Rate | null> => {
         return null;
     }
 
-    return data ? mapDbToRate(data) : null;
+    if (data) {
+        const rate = mapDbToRate(data);
+        // Authorization check for non-admins
+        if (!isAdmin(user)) {
+            const hasTierAccess = !rate.tier_access || 
+                                 rate.tier_access.length === 0 || 
+                                 rate.tier_access.includes(user.tier || 'Brass') ||
+                                 user.hasAllTierAccess;
+            
+            const hasTypeAccess = !rate.user_type_access || 
+                                 rate.user_type_access.length === 0 || 
+                                 rate.user_type_access.includes(user.type || 'international');
+            
+            if (!hasTierAccess || !hasTypeAccess) return null;
+        }
+        return rate;
+    }
+    return null;
 };
 
 export const addRate = async (data: Omit<Rate, 'id'>): Promise<string> => {
+    const user = await ensureAdmin();
     const dbData = mapRateToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { data: insertedData, error } = await supabaseAdmin
@@ -52,15 +94,12 @@ export const addRate = async (data: Omit<Rate, 'id'>): Promise<string> => {
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'rate.create',
-                details: { rateId: insertedData.id, rateTitle: data.title }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'rate.create',
+            details: { rateId: insertedData.id, rateTitle: data.title }
+        });
     } catch (e) {
         console.error('Could not log rate creation activity:', e);
     }
@@ -69,6 +108,7 @@ export const addRate = async (data: Omit<Rate, 'id'>): Promise<string> => {
 };
 
 export const updateRate = async (id: string, data: Partial<Rate>): Promise<void> => {
+    const user = await ensureAdmin();
     const dbData = mapRateToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
@@ -82,21 +122,19 @@ export const updateRate = async (id: string, data: Partial<Rate>): Promise<void>
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'rate.update',
-                details: { rateId: id, rateTitle: data.title || 'Unknown' }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'rate.update',
+            details: { rateId: id, rateTitle: data.title || 'Unknown' }
+        });
     } catch (e) {
         console.error('Could not log rate update activity:', e);
     }
 };
 
 export const deleteRate = async (id: string): Promise<void> => {
+    const user = await ensureAdmin();
     const rate = await getRate(id);
     if (!rate) return;
 
@@ -113,15 +151,12 @@ export const deleteRate = async (id: string): Promise<void> => {
     if (error) throw error;
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'rate.delete',
-                details: { rateId: id, rateTitle: rate.title }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'rate.delete',
+            details: { rateId: id, rateTitle: rate.title }
+        });
     } catch (e) {
         console.error('Could not log rate deletion activity:', e);
     }

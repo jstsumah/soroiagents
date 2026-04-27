@@ -2,11 +2,14 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Resource } from '@/lib/types';
-import { getAuthenticatedUser } from './auth-service';
+import { getAuthenticatedUser, ensureAdmin, isAdmin } from './auth-service';
 import { logActivity } from './audit-log-service';
 import { deleteFile } from './storage-service';
 
 export const getResources = async (): Promise<Resource[]> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     let allData: any[] = [];
     let from = 0;
@@ -31,10 +34,25 @@ export const getResources = async (): Promise<Resource[]> => {
         from += step;
     }
 
-    return (allData || []).map(mapDbToResource);
+    let resources = (allData || []).map(mapDbToResource);
+    
+    // If not admin, filter by tier access
+    if (!isAdmin(user)) {
+        resources = resources.filter(res => 
+            !res.tier_access || 
+            res.tier_access.length === 0 || 
+            res.tier_access.includes(user.tier || 'Brass') ||
+            user.hasAllTierAccess
+        );
+    }
+
+    return resources;
 };
 
 export const getResource = async (id: string): Promise<Resource | null> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('resources')
@@ -47,10 +65,24 @@ export const getResource = async (id: string): Promise<Resource | null> => {
         return null;
     }
 
-    return data ? mapDbToResource(data) : null;
+    if (data) {
+        const resource = mapDbToResource(data);
+        // Authorization check for non-admins
+        if (!isAdmin(user)) {
+            const hasAccess = !resource.tier_access || 
+                              resource.tier_access.length === 0 || 
+                              resource.tier_access.includes(user.tier || 'Brass') ||
+                              user.hasAllTierAccess;
+            if (!hasAccess) return null;
+        }
+        return resource;
+    }
+
+    return null;
 };
 
 export const addResource = async (data: Omit<Resource, 'id'>): Promise<string> => {
+    const user = await ensureAdmin();
     const dbData = mapResourceToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { data: insertedData, error } = await supabaseAdmin
@@ -62,15 +94,12 @@ export const addResource = async (data: Omit<Resource, 'id'>): Promise<string> =
     if (error) throw error;
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'resource.create',
-                details: { resourceId: insertedData.id, resourceTitle: data.title }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'resource.create',
+            details: { resourceId: insertedData.id, resourceTitle: data.title }
+        });
     } catch (e) {
         console.error('Could not log resource creation activity:', e);
     }
@@ -79,6 +108,7 @@ export const addResource = async (data: Omit<Resource, 'id'>): Promise<string> =
 };
 
 export const updateResource = async (id: string, data: Partial<Resource>): Promise<void> => {
+    const user = await ensureAdmin();
     const dbData = mapResourceToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
@@ -89,21 +119,19 @@ export const updateResource = async (id: string, data: Partial<Resource>): Promi
     if (error) throw error;
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'resource.update',
-                details: { resourceId: id, resourceTitle: data.title || 'Unknown' }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'resource.update',
+            details: { resourceId: id, resourceTitle: data.title || 'Unknown' }
+        });
     } catch (e) {
         console.error('Could not log resource update activity:', e);
     }
 };
 
 export const deleteResource = async (id: string): Promise<void> => {
+    const user = await ensureAdmin();
     const resource = await getResource(id);
     if (!resource) return;
 
@@ -120,15 +148,12 @@ export const deleteResource = async (id: string): Promise<void> => {
     if (error) throw error;
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'resource.delete',
-                details: { resourceId: id, resourceTitle: resource.title }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'resource.delete',
+            details: { resourceId: id, resourceTitle: resource.title }
+        });
     } catch (e) {
         console.error('Could not log resource deletion activity:', e);
     }

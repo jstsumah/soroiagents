@@ -279,9 +279,8 @@ CREATE POLICY "Admins can manage training" ON training_resources FOR ALL USING (
 CREATE POLICY "Auth users can view settings" ON settings FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Admins can manage settings" ON settings FOR ALL USING (public.is_admin());
 
--- Audit Logs: Admins can read all, System can insert
+-- Audit Logs: Admins can read all, System can insert via service_role (bypasses RLS)
 CREATE POLICY "Admins can view audit logs" ON audit_logs FOR SELECT USING (public.is_admin());
-CREATE POLICY "Anyone can insert audit logs" ON audit_logs FOR INSERT WITH CHECK (true);
 
 -- Chat: Users can manage their own sessions, Admins can manage all
 CREATE POLICY "Users can manage own chat sessions" ON chat_sessions FOR ALL USING (auth.uid() = user_id);

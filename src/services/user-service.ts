@@ -8,8 +8,10 @@ import { getAuthenticatedUser } from './auth-service';
 import { sendEmail } from './email-service';
 import { getCompanyDetails } from './settings-service';
 import { getEmailTemplateByEvent } from './email-template-service';
+import { ensureAdmin, isAdmin } from './auth-service';
 
 export const getUsers = async (): Promise<User[]> => {
+    await ensureAdmin();
     const supabaseAdmin = getSupabaseAdmin();
     let allData: any[] = [];
     let from = 0;
@@ -45,6 +47,14 @@ export const getUsers = async (): Promise<User[]> => {
 export const getUser = async (uid: string): Promise<User | null> => {
     if (!uid) return null;
 
+    const authUser = await getAuthenticatedUser();
+    if (!authUser) throw new Error('Unauthorized');
+
+    // Only Admins can view other users' profiles
+    if (authUser.uid !== uid && !isAdmin(authUser)) {
+        throw new Error('Unauthorized: You can only view your own profile.');
+    }
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('profiles')
@@ -66,6 +76,7 @@ export const getUser = async (uid: string): Promise<User | null> => {
 };
 
 export const getUserByEmail = async (email: string): Promise<User | null> => {
+    await ensureAdmin();
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('profiles')
@@ -78,6 +89,14 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
 };
 
 export const getUsersByCompanyId = async (companyId: string): Promise<User[]> => {
+    const authUser = await getAuthenticatedUser();
+    if (!authUser) throw new Error('Unauthorized');
+
+    // Only Admins or users from the same company (if they have canViewUsers permission)
+    if (authUser.companyId !== companyId && !isAdmin(authUser)) {
+         throw new Error('Unauthorized');
+    }
+
     const supabaseAdmin = getSupabaseAdmin();
     let allData: any[] = [];
     let from = 0;

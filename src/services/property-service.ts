@@ -4,10 +4,13 @@ import { createClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Property } from '@/lib/types';
 import { logActivity } from './audit-log-service';
-import { getAuthenticatedUser } from './auth-service';
+import { getAuthenticatedUser, ensureAdmin, isAdmin } from './auth-service';
 import { deleteFile, uploadFile, uploadFileFromFormData } from './storage-service';
 
 export const getProperties = async (): Promise<Property[]> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+    
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('properties')
@@ -24,6 +27,9 @@ export const getProperties = async (): Promise<Property[]> => {
 };
 
 export const getProperty = async (id: string): Promise<Property | null> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('properties')
@@ -40,7 +46,7 @@ export const getProperty = async (id: string): Promise<Property | null> => {
 };
 
 export const addProperty = async (data: any): Promise<string> => {
-    const user = await getAuthenticatedUser();
+    const user = await ensureAdmin();
 
     const dbData = mapPropertyToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
@@ -65,7 +71,7 @@ export const addProperty = async (data: any): Promise<string> => {
 };
 
 export const updateProperty = async (id: string, data: any): Promise<void> => {
-    const user = await getAuthenticatedUser();
+    const user = await ensureAdmin();
 
     const dbData = mapPropertyToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
@@ -87,7 +93,7 @@ export const updateProperty = async (id: string, data: any): Promise<void> => {
 };
 
 export const deleteProperty = async (id: string): Promise<void> => {
-    const user = await getAuthenticatedUser();
+    const user = await ensureAdmin();
     const property = await getProperty(id);
 
     if (!property) {
@@ -121,6 +127,9 @@ export const deleteProperty = async (id: string): Promise<void> => {
 };
 
 export const getFeaturedProperty = async (): Promise<Property | null> => {
+  const user = await getAuthenticatedUser();
+  if (!user) return null;
+
   const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin
     .from('properties')
@@ -145,6 +154,9 @@ export const getFeaturedProperty = async (): Promise<Property | null> => {
 export const searchProperties = async (searchQuery: string): Promise<Partial<Property>[]> => {
     if (!searchQuery) return [];
     
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('properties')
@@ -164,10 +176,12 @@ export const searchProperties = async (searchQuery: string): Promise<Partial<Pro
  * This is a wrapper function to handle file uploads safely from the client.
  */
 export const uploadPropertyImage = async (base64: string, filePath: string, mimeType: string): Promise<string> => {
+    await ensureAdmin();
     return uploadFile(base64, filePath, mimeType);
 };
 
 export const uploadPropertyImageFromFormData = async (formData: FormData): Promise<string> => {
+    await ensureAdmin();
     return uploadFileFromFormData(formData);
 };
 

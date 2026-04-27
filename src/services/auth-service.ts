@@ -24,3 +24,16 @@ export const getAuthenticatedUser = async (): Promise<User | null> => {
 
   return await getUser(authUser.id);
 };
+
+export const isAdmin = (user: User | null): boolean => {
+  if (!user) return false;
+  return user.role === 'Admin' || user.role === 'Super Admin';
+};
+
+export const ensureAdmin = async (): Promise<User> => {
+  const user = await getAuthenticatedUser();
+  if (!user || !isAdmin(user)) {
+    throw new Error('Unauthorized: Admin access required');
+  }
+  return user;
+};
