@@ -133,8 +133,8 @@ function AgentProfileForm({ agent }: { agent: User }) {
       >
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={() => {
-              console.log("Cancel clicked, redirecting to dashboard");
-              router.push('/app/agent/dashboard');
+              console.log("Cancel clicked, going back");
+              router.back();
           }}>Cancel</Button>
           <Button 
             type="submit" 

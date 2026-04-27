@@ -116,11 +116,9 @@ export default function AdminChatPage() {
         <div className="flex flex-col gap-4 h-full">
             <div className="flex items-center justify-between">
                  <div className="flex items-center gap-4">
-                    <Link href="/app/admin/support-chat">
-                        <Button variant="outline" size="icon">
-                            <ArrowLeft />
-                        </Button>
-                    </Link>
+                    <Button variant="outline" size="icon" onClick={() => router.back()}>
+                        <ArrowLeft />
+                    </Button>
                     <div className="flex items-center gap-3">
                         <Avatar>
                             <AvatarFallback>{guestUser?.name?.substring(0, 2) || 'G'}</AvatarFallback>
