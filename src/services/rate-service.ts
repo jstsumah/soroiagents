@@ -24,7 +24,8 @@ export const getRates = async (): Promise<Rate[]> => {
     let rates = (data || []).map(mapDbToRate);
 
     // If not admin, filter by tier and user type access
-    if (!isAdmin(user)) {
+    const isUserAdmin = await isAdmin(user);
+    if (!isUserAdmin) {
         rates = rates.filter(rate => {
             const hasTierAccess = !rate.tier_access || 
                                  rate.tier_access.length === 0 || 
@@ -61,7 +62,8 @@ export const getRate = async (id: string): Promise<Rate | null> => {
     if (data) {
         const rate = mapDbToRate(data);
         // Authorization check for non-admins
-        if (!isAdmin(user)) {
+        const isUserAdmin = await isAdmin(user);
+        if (!isUserAdmin) {
             const hasTierAccess = !rate.tier_access || 
                                  rate.tier_access.length === 0 || 
                                  rate.tier_access.includes(user.tier || 'Brass') ||

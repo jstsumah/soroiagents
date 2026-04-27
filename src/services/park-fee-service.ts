@@ -2,10 +2,13 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { ParkFee } from '@/lib/types';
-import { getAuthenticatedUser } from './auth-service';
+import { getAuthenticatedUser, ensureAdmin, isAdmin } from './auth-service';
 import { logActivity } from './audit-log-service';
 
 export const getParkFees = async (): Promise<ParkFee[]> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('park_fees')
@@ -16,10 +19,25 @@ export const getParkFees = async (): Promise<ParkFee[]> => {
         console.error('Error fetching park fees:', error);
         return [];
     }
-    return (data || []) as ParkFee[];
+    let fees = (data || []) as ParkFee[];
+
+    // If not admin, filter by user type
+    const isUserAdmin = await isAdmin(user);
+    if (!isUserAdmin) {
+        fees = fees.filter(fee => 
+            !fee.user_type || 
+            fee.user_type === 'all' || 
+            fee.user_type === user.type
+        );
+    }
+
+    return fees;
 };
 
 export const getParkFee = async (id: string): Promise<ParkFee | null> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('park_fees')
@@ -32,10 +50,22 @@ export const getParkFee = async (id: string): Promise<ParkFee | null> => {
         console.error(`Error fetching park fee ${id}:`, error);
         throw error;
     }
-    return data as ParkFee;
+    if (data) {
+        const fee = data as ParkFee;
+        // Authorization check for non-admins
+        const isUserAdmin = await isAdmin(user);
+        if (!isUserAdmin) {
+            if (fee.user_type && fee.user_type !== 'all' && fee.user_type !== user.type) {
+                return null;
+            }
+        }
+        return fee;
+    }
+    return null;
 };
 
 export const addParkFee = async (data: Omit<ParkFee, 'id'>): Promise<string> => {
+    const user = await ensureAdmin();
     const supabaseAdmin = getSupabaseAdmin();
     const { data: insertedData, error } = await supabaseAdmin
         .from('park_fees')
@@ -49,15 +79,12 @@ export const addParkFee = async (data: Omit<ParkFee, 'id'>): Promise<string> => 
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'parkFee.create',
-                details: { parkFeeId: insertedData.id, location: data.location }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'parkFee.create',
+            details: { parkFeeId: insertedData.id, location: data.location }
+        });
     } catch (e) {
         console.error('Could not log park fee creation activity:', e);
     }
@@ -66,6 +93,7 @@ export const addParkFee = async (data: Omit<ParkFee, 'id'>): Promise<string> => 
 };
 
 export const updateParkFee = async (id: string, data: Partial<ParkFee>): Promise<void> => {
+    const user = await ensureAdmin();
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
         .from('park_fees')
@@ -78,21 +106,19 @@ export const updateParkFee = async (id: string, data: Partial<ParkFee>): Promise
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'parkFee.update',
-                details: { parkFeeId: id, location: data.location || 'Unknown' }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'parkFee.update',
+            details: { parkFeeId: id, location: data.location || 'Unknown' }
+        });
     } catch (e) {
         console.error('Could not log park fee update activity:', e);
     }
 };
 
 export const deleteParkFee = async (id: string): Promise<void> => {
+    const user = await ensureAdmin();
     const feeData = await getParkFee(id);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
@@ -106,15 +132,12 @@ export const deleteParkFee = async (id: string): Promise<void> => {
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user && feeData) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'parkFee.delete',
-                details: { parkFeeId: id, location: feeData.location }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'parkFee.delete',
+            details: { parkFeeId: id, location: feeData.location }
+        });
     } catch (e) {
         console.error('Could not log park fee deletion activity:', e);
     }

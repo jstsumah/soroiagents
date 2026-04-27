@@ -2,12 +2,15 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { TrainingResource } from '@/lib/types';
-import { getAuthenticatedUser } from './auth-service';
+import { getAuthenticatedUser, ensureAdmin, isAdmin } from './auth-service';
 import { logActivity } from './audit-log-service';
 
 import { deleteFile, uploadFile } from './storage-service';
 
 export const getTrainingResources = async (): Promise<TrainingResource[]> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     let allData: any[] = [];
     let from = 0;
@@ -32,10 +35,26 @@ export const getTrainingResources = async (): Promise<TrainingResource[]> => {
         from += step;
     }
 
-    return (allData || []).map(mapDbToTrainingResource);
+    let resources = (allData || []).map(mapDbToTrainingResource);
+
+    // If not admin, filter by tier access
+    const isUserAdmin = await isAdmin(user);
+    if (!isUserAdmin) {
+        resources = resources.filter(res => 
+            !res.tier_access || 
+            res.tier_access.length === 0 || 
+            res.tier_access.includes(user.tier || 'Brass') ||
+            user.hasAllTierAccess
+        );
+    }
+
+    return resources;
 };
 
 export const getTrainingResource = async (id: string): Promise<TrainingResource | null> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('training_resources')
@@ -48,10 +67,24 @@ export const getTrainingResource = async (id: string): Promise<TrainingResource 
         console.error(`Error fetching training resource ${id}:`, error);
         throw error;
     }
-    return data ? mapDbToTrainingResource(data) : null;
+    if (data) {
+        const resource = mapDbToTrainingResource(data);
+        // Authorization check for non-admins
+        const isUserAdmin = await isAdmin(user);
+        if (!isUserAdmin) {
+            const hasAccess = !resource.tier_access || 
+                              resource.tier_access.length === 0 || 
+                              resource.tier_access.includes(user.tier || 'Brass') ||
+                              user.hasAllTierAccess;
+            if (!hasAccess) return null;
+        }
+        return resource;
+    }
+    return null;
 };
 
 export const addTrainingResource = async (data: Omit<TrainingResource, 'id'>): Promise<string> => {
+    const user = await ensureAdmin();
     const dbData = mapTrainingResourceToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { data: insertedData, error } = await supabaseAdmin
@@ -66,15 +99,12 @@ export const addTrainingResource = async (data: Omit<TrainingResource, 'id'>): P
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'training.create',
-                details: { resourceId: insertedData.id, resourceTitle: data.title }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'training.create',
+            details: { resourceId: insertedData.id, resourceTitle: data.title }
+        });
     } catch (e) {
         console.error('Could not log training resource creation activity:', e);
     }
@@ -83,6 +113,7 @@ export const addTrainingResource = async (data: Omit<TrainingResource, 'id'>): P
 };
 
 export const updateTrainingResource = async (id: string, data: Partial<Omit<TrainingResource, 'id' | 'uploaded_at'>>): Promise<void> => {
+    const user = await ensureAdmin();
     const dbData = mapTrainingResourceToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
@@ -96,21 +127,19 @@ export const updateTrainingResource = async (id: string, data: Partial<Omit<Trai
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'training.update',
-                details: { resourceId: id, resourceTitle: data.title || 'Unknown' }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'training.update',
+            details: { resourceId: id, resourceTitle: data.title || 'Unknown' }
+        });
     } catch (e) {
         console.error('Could not log training resource update activity:', e);
     }
 };
 
 export const deleteTrainingResource = async (id: string): Promise<void> => {
+    const user = await ensureAdmin();
     const resourceData = await getTrainingResource(id);
     if (!resourceData) return;
 
@@ -136,15 +165,12 @@ export const deleteTrainingResource = async (id: string): Promise<void> => {
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'training.delete',
-                details: { resourceId: id, resourceTitle: resourceData.title }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'training.delete',
+            details: { resourceId: id, resourceTitle: resourceData.title }
+        });
     } catch (e) {
         console.error('Could not log training resource deletion activity:', e);
     }

@@ -2,12 +2,15 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { PackagedItinerary } from '@/lib/types';
-import { getAuthenticatedUser } from './auth-service';
+import { getAuthenticatedUser, ensureAdmin, isAdmin } from './auth-service';
 import { logActivity } from './audit-log-service';
 
 import { deleteFile, uploadFile } from './storage-service';
 
 export const getItineraries = async (): Promise<PackagedItinerary[]> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     let allData: any[] = [];
     let from = 0;
@@ -33,10 +36,32 @@ export const getItineraries = async (): Promise<PackagedItinerary[]> => {
         from += step;
     }
 
-    return (allData || []).map(mapDbToItinerary);
+    let itineraries = (allData || []).map(mapDbToItinerary);
+    
+    // If not admin, filter by tier and user type access
+    const isUserAdmin = await isAdmin(user);
+    if (!isUserAdmin) {
+        itineraries = itineraries.filter(it => {
+            const hasTierAccess = !it.tier_access || 
+                                 it.tier_access.length === 0 || 
+                                 it.tier_access.includes(user.tier || 'Brass') ||
+                                 user.hasAllTierAccess;
+            
+            const hasTypeAccess = !it.user_type_access || 
+                                 it.user_type_access.length === 0 || 
+                                 it.user_type_access.includes(user.type || 'international');
+            
+            return hasTierAccess && hasTypeAccess;
+        });
+    }
+
+    return itineraries;
 };
 
 export const getItinerary = async (id: string): Promise<PackagedItinerary | null> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('packaged_itineraries')
@@ -49,10 +74,29 @@ export const getItinerary = async (id: string): Promise<PackagedItinerary | null
         console.error(`Error fetching itinerary ${id}:`, error);
         throw error;
     }
-    return data ? mapDbToItinerary(data) : null;
+    if (data) {
+        const itinerary = mapDbToItinerary(data);
+        // Authorization check for non-admins
+        const isUserAdmin = await isAdmin(user);
+        if (!isUserAdmin) {
+            const hasTierAccess = !itinerary.tier_access || 
+                                 itinerary.tier_access.length === 0 || 
+                                 itinerary.tier_access.includes(user.tier || 'Brass') ||
+                                 user.hasAllTierAccess;
+            
+            const hasTypeAccess = !itinerary.user_type_access || 
+                                 itinerary.user_type_access.length === 0 || 
+                                 itinerary.user_type_access.includes(user.type || 'international');
+            
+            if (!hasTierAccess || !hasTypeAccess) return null;
+        }
+        return itinerary;
+    }
+    return null;
 };
 
 export const addItinerary = async (data: Omit<PackagedItinerary, 'id'>): Promise<string> => {
+    const user = await ensureAdmin();
     const dbData = mapItineraryToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { data: insertedData, error } = await supabaseAdmin
@@ -70,15 +114,12 @@ export const addItinerary = async (data: Omit<PackagedItinerary, 'id'>): Promise
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'itinerary.create',
-                details: { itineraryId: insertedData.id, itineraryTitle: data.title }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'itinerary.create',
+            details: { itineraryId: insertedData.id, itineraryTitle: data.title }
+        });
     } catch (e) {
         console.error('Could not log itinerary creation activity:', e);
     }
@@ -86,6 +127,7 @@ export const addItinerary = async (data: Omit<PackagedItinerary, 'id'>): Promise
 };
 
 export const updateItinerary = async (id: string, data: Partial<PackagedItinerary>): Promise<void> => {
+    const user = await ensureAdmin();
     const dbData = mapItineraryToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
@@ -99,21 +141,19 @@ export const updateItinerary = async (id: string, data: Partial<PackagedItinerar
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'itinerary.update',
-                details: { itineraryId: id, itineraryTitle: data.title || 'Unknown' }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'itinerary.update',
+            details: { itineraryId: id, itineraryTitle: data.title || 'Unknown' }
+        });
     } catch (e) {
         console.error('Could not log itinerary update activity:', e);
     }
 };
 
 export const deleteItinerary = async (id: string): Promise<void> => {
+    const user = await ensureAdmin();
     const itineraryData = await getItinerary(id);
     if (!itineraryData) return;
 
@@ -145,15 +185,12 @@ export const deleteItinerary = async (id: string): Promise<void> => {
     }
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user && itineraryData) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'itinerary.delete',
-                details: { itineraryId: id, itineraryTitle: itineraryData.title }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'itinerary.delete',
+            details: { itineraryId: id, itineraryTitle: itineraryData.title }
+        });
     } catch (e) {
         console.error('Could not log itinerary deletion activity:', e);
     }

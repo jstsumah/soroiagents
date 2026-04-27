@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { getUser } from './user-service';
+import { getUserProfile } from './user-service';
 import type { User } from '@/lib/types';
 
 export const getAuthenticatedUser = async (): Promise<User | null> => {
@@ -22,17 +22,17 @@ export const getAuthenticatedUser = async (): Promise<User | null> => {
     return null;
   }
 
-  return await getUser(authUser.id);
+  return await getUserProfile(authUser.id);
 };
 
-export const isAdmin = (user: User | null): boolean => {
+export const isAdmin = async (user: User | null): Promise<boolean> => {
   if (!user) return false;
   return user.role === 'Admin' || user.role === 'Super Admin';
 };
 
 export const ensureAdmin = async (): Promise<User> => {
   const user = await getAuthenticatedUser();
-  if (!user || !isAdmin(user)) {
+  if (!user || !(await isAdmin(user))) {
     throw new Error('Unauthorized: Admin access required');
   }
   return user;

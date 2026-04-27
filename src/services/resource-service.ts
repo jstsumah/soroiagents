@@ -37,7 +37,8 @@ export const getResources = async (): Promise<Resource[]> => {
     let resources = (allData || []).map(mapDbToResource);
     
     // If not admin, filter by tier access
-    if (!isAdmin(user)) {
+    const isUserAdmin = await isAdmin(user);
+    if (!isUserAdmin) {
         resources = resources.filter(res => 
             !res.tier_access || 
             res.tier_access.length === 0 || 
@@ -68,7 +69,8 @@ export const getResource = async (id: string): Promise<Resource | null> => {
     if (data) {
         const resource = mapDbToResource(data);
         // Authorization check for non-admins
-        if (!isAdmin(user)) {
+        const isUserAdmin = await isAdmin(user);
+        if (!isUserAdmin) {
             const hasAccess = !resource.tier_access || 
                               resource.tier_access.length === 0 || 
                               resource.tier_access.includes(user.tier || 'Brass') ||

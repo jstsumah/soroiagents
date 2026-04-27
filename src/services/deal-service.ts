@@ -2,11 +2,14 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { ExclusiveDeal } from '@/lib/types';
-import { getAuthenticatedUser } from './auth-service';
+import { getAuthenticatedUser, ensureAdmin, isAdmin } from './auth-service';
 import { logActivity } from './audit-log-service';
 import { deleteFile } from './storage-service';
 
 export const getDeals = async (): Promise<ExclusiveDeal[]> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     let allData: any[] = [];
     let from = 0;
@@ -31,7 +34,24 @@ export const getDeals = async (): Promise<ExclusiveDeal[]> => {
         from += step;
     }
 
-    const dealList = (allData || []).map(mapDbToDeal);
+    let dealList = (allData || []).map(mapDbToDeal);
+    
+    // If not admin, filter by tier and user type access
+    const isUserAdmin = await isAdmin(user);
+    if (!isUserAdmin) {
+        dealList = dealList.filter(deal => {
+            const hasTierAccess = !deal.tier_access || 
+                                 deal.tier_access.length === 0 || 
+                                 deal.tier_access.includes(user.tier || 'Brass') ||
+                                 user.hasAllTierAccess;
+            
+            const hasTypeAccess = !deal.user_type_access || 
+                                 deal.user_type_access.length === 0 || 
+                                 deal.user_type_access.includes(user.type || 'international');
+            
+            return hasTierAccess && hasTypeAccess;
+        });
+    }
     
     // Manual sorting for featured deals
     dealList.sort((a, b) => {
@@ -44,6 +64,9 @@ export const getDeals = async (): Promise<ExclusiveDeal[]> => {
 };
 
 export const getDeal = async (id: string): Promise<ExclusiveDeal | null> => {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('exclusive_deals')
@@ -56,10 +79,29 @@ export const getDeal = async (id: string): Promise<ExclusiveDeal | null> => {
         return null;
     }
 
-    return data ? mapDbToDeal(data) : null;
+    if (data) {
+        const deal = mapDbToDeal(data);
+        // Authorization check for non-admins
+        const isUserAdmin = await isAdmin(user);
+        if (!isUserAdmin) {
+            const hasTierAccess = !deal.tier_access || 
+                                 deal.tier_access.length === 0 || 
+                                 deal.tier_access.includes(user.tier || 'Brass') ||
+                                 user.hasAllTierAccess;
+            
+            const hasTypeAccess = !deal.user_type_access || 
+                                 deal.user_type_access.length === 0 || 
+                                 deal.user_type_access.includes(user.type || 'international');
+            
+            if (!hasTierAccess || !hasTypeAccess) return null;
+        }
+        return deal;
+    }
+    return null;
 };
 
 export const addDeal = async (data: Omit<ExclusiveDeal, 'id'>): Promise<string> => {
+    const user = await ensureAdmin();
     const dbData = mapDealToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { data: insertedData, error } = await supabaseAdmin
@@ -71,15 +113,12 @@ export const addDeal = async (data: Omit<ExclusiveDeal, 'id'>): Promise<string> 
     if (error) throw error;
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'deal.create',
-                details: { dealId: insertedData.id, dealTitle: data.title }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'deal.create',
+            details: { dealId: insertedData.id, dealTitle: data.title }
+        });
     } catch (e) {
         console.error('Could not log deal creation activity:', e);
     }
@@ -88,6 +127,7 @@ export const addDeal = async (data: Omit<ExclusiveDeal, 'id'>): Promise<string> 
 };
 
 export const updateDeal = async (id: string, data: Partial<ExclusiveDeal>): Promise<void> => {
+    const user = await ensureAdmin();
     const dbData = mapDealToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
@@ -98,21 +138,19 @@ export const updateDeal = async (id: string, data: Partial<ExclusiveDeal>): Prom
     if (error) throw error;
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'deal.update',
-                details: { dealId: id, dealTitle: data.title || 'Unknown' }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'deal.update',
+            details: { dealId: id, dealTitle: data.title || 'Unknown' }
+        });
     } catch (e) {
         console.error('Could not log deal update activity:', e);
     }
 };
 
 export const deleteDeal = async (id: string): Promise<void> => {
+    const user = await ensureAdmin();
     const deal = await getDeal(id);
     if (!deal) return;
 
@@ -129,21 +167,21 @@ export const deleteDeal = async (id: string): Promise<void> => {
     if (error) throw error;
 
     try {
-        const user = await getAuthenticatedUser();
-        if (user) {
-            await logActivity({
-                userId: user.uid,
-                userName: user.name,
-                action: 'deal.delete',
-                details: { dealId: id, dealTitle: deal.title }
-            });
-        }
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'deal.delete',
+            details: { dealId: id, dealTitle: deal.title }
+        });
     } catch (e) {
         console.error('Could not log deal deletion activity:', e);
     }
 };
 
 export const getFeaturedDeal = async (): Promise<ExclusiveDeal | null> => {
+    const user = await getAuthenticatedUser();
+    if (!user) return null;
+
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('exclusive_deals')

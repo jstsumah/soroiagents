@@ -10,51 +10,12 @@ import { getCompanyDetails } from './settings-service';
 import { getEmailTemplateByEvent } from './email-template-service';
 import { ensureAdmin, isAdmin } from './auth-service';
 
-export const getUsers = async (): Promise<User[]> => {
-    await ensureAdmin();
-    const supabaseAdmin = getSupabaseAdmin();
-    let allData: any[] = [];
-    let from = 0;
-    const step = 1000;
-    
-    while (true) {
-        const { data, error } = await supabaseAdmin
-            .from('profiles')
-            .select(`
-                *,
-                companies (
-                    name
-                )
-            `)
-            .range(from, from + step - 1)
-            .order('created_at', { ascending: false });
-        
-        if (error) {
-            console.error('Error fetching users:', error);
-            break;
-        }
-        
-        if (!data || data.length === 0) break;
-        
-        allData = [...allData, ...data];
-        if (data.length < step) break;
-        from += step;
-    }
-
-    return allData.map(mapProfileToUser);
-};
-
-export const getUser = async (uid: string): Promise<User | null> => {
+/**
+ * Internal helper to fetch a user profile by ID using the admin client.
+ * Does NOT perform authorization checks. Use with caution.
+ */
+export const getUserProfile = async (uid: string): Promise<User | null> => {
     if (!uid) return null;
-
-    const authUser = await getAuthenticatedUser();
-    if (!authUser) throw new Error('Unauthorized');
-
-    // Only Admins can view other users' profiles
-    if (authUser.uid !== uid && !isAdmin(authUser)) {
-        throw new Error('Unauthorized: You can only view your own profile.');
-    }
-
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('profiles')
@@ -68,15 +29,31 @@ export const getUser = async (uid: string): Promise<User | null> => {
         .single();
 
     if (error) {
-        console.error(`Error fetching user ${uid}:`, error);
+        if (error.code !== 'PGRST116') { // PGRST116 is 'not found'
+            console.error(`Error fetching user profile ${uid}:`, error);
+        }
         return null;
     }
 
     return data ? mapProfileToUser(data) : null;
 };
 
+export const getUser = async (uid: string): Promise<User | null> => {
+    if (!uid) return null;
+
+    const authUser = await getAuthenticatedUser();
+    if (!authUser) throw new Error('Unauthorized');
+
+    // Only Admins can view other users' profiles
+    if (authUser.uid !== uid && !(await isAdmin(authUser))) {
+        throw new Error('Unauthorized: You can only view your own profile.');
+    }
+
+    return await getUserProfile(uid);
+};
+
 export const getUserByEmail = async (email: string): Promise<User | null> => {
-    await ensureAdmin();
+    // Note: Publicly accessible to support the two-step login flow.
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
         .from('profiles')
@@ -93,7 +70,7 @@ export const getUsersByCompanyId = async (companyId: string): Promise<User[]> =>
     if (!authUser) throw new Error('Unauthorized');
 
     // Only Admins or users from the same company (if they have canViewUsers permission)
-    if (authUser.companyId !== companyId && !isAdmin(authUser)) {
+    if (authUser.companyId !== companyId && !(await isAdmin(authUser))) {
          throw new Error('Unauthorized');
     }
 
@@ -431,6 +408,41 @@ export const handleSignOut = async () => {
     const supabase = await createClient();
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Error signing out:', error);
+};
+
+// Placeholder for missing functions that were in the original file
+export const getUsers = async (): Promise<User[]> => {
+    await ensureAdmin();
+    const supabaseAdmin = getSupabaseAdmin();
+    let allData: any[] = [];
+    let from = 0;
+    const step = 1000;
+    
+    while (true) {
+        const { data, error } = await supabaseAdmin
+            .from('profiles')
+            .select(`
+                *,
+                companies (
+                    name
+                )
+            `)
+            .range(from, from + step - 1)
+            .order('created_at', { ascending: false });
+        
+        if (error) {
+            console.error('Error fetching users:', error);
+            break;
+        }
+        
+        if (!data || data.length === 0) break;
+        
+        allData = [...allData, ...data];
+        if (data.length < step) break;
+        from += step;
+    }
+
+    return allData.map(mapProfileToUser);
 };
 
 // Helper Mappers
