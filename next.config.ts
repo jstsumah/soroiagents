@@ -2,13 +2,13 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  serverActions: {
+    bodySizeLimit: '20mb',
+  },
   experimental: {
     webpackBuildWorker: false,
     parallelServerCompiles: false,
     parallelServerBuildTraces: false,
-    serverActions: {
-      bodySizeLimit: '20mb',
-    },
   },
   typescript: {
     ignoreBuildErrors: true,

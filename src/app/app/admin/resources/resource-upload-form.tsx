@@ -131,7 +131,19 @@ export function ResourceUploadForm({ isItinerary = false }: ResourceUploadFormPr
     const formData = new FormData();
     formData.append('file', file);
     formData.append('path', path);
-    return await uploadFileFromFormData(formData);
+    
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.url;
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
