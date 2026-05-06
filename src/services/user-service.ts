@@ -44,9 +44,9 @@ export const getUser = async (uid: string): Promise<User | null> => {
     const authUser = await getAuthenticatedUser();
     if (!authUser) throw new Error('Unauthorized');
 
-    // Only Admins can view other users' profiles
-    if (authUser.uid !== uid && !(await isAdmin(authUser))) {
-        throw new Error('Unauthorized: You can only view your own profile.');
+    // Only Admins or users with canViewUsers permission can view other profiles
+    if (authUser.uid !== uid && !(await isAdmin(authUser)) && !authUser.canViewUsers) {
+        throw new Error('Unauthorized: You do not have permission to view other profiles.');
     }
 
     return await getUserProfile(uid);
@@ -69,8 +69,8 @@ export const getUsersByCompanyId = async (companyId: string): Promise<User[]> =>
     const authUser = await getAuthenticatedUser();
     if (!authUser) throw new Error('Unauthorized');
 
-    // Only Admins or users from the same company (if they have canViewUsers permission)
-    if (authUser.companyId !== companyId && !(await isAdmin(authUser))) {
+    // Only Admins, users from the same company, or users with canViewUsers permission
+    if (authUser.companyId !== companyId && !(await isAdmin(authUser)) && !authUser.canViewUsers) {
          throw new Error('Unauthorized');
     }
 
@@ -412,21 +412,35 @@ export const handleSignOut = async () => {
 
 // Placeholder for missing functions that were in the original file
 export const getUsers = async (): Promise<User[]> => {
-    await ensureAdmin();
+    const authUser = await getAuthenticatedUser();
+    if (!authUser) throw new Error('Unauthorized');
+
+    const isUserAdmin = await isAdmin(authUser);
+    if (!isUserAdmin && !authUser.canViewUsers) {
+        throw new Error('Unauthorized: You do not have permission to view users.');
+    }
+
     const supabaseAdmin = getSupabaseAdmin();
     let allData: any[] = [];
     let from = 0;
     const step = 1000;
     
     while (true) {
-        const { data, error } = await supabaseAdmin
+        let query = supabaseAdmin
             .from('profiles')
             .select(`
                 *,
                 companies (
                     name
                 )
-            `)
+            `);
+        
+        // If not admin, only show agents
+        if (!isUserAdmin) {
+            query = query.eq('role', 'Agent');
+        }
+
+        const { data, error } = await query
             .range(from, from + step - 1)
             .order('created_at', { ascending: false });
         
