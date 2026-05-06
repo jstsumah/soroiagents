@@ -47,7 +47,7 @@ export function ResourceCard({ resource }: { resource: Resource }) {
            )}
         </div>
         <div className="p-6 pb-2">
-            <Badge variant="secondary" className="mb-2 capitalize">{resource.category.replace('-', ' ')}</Badge>
+            <Badge variant="accent" className="mb-2 capitalize shadow-sm">{resource.category === 'factsheet' ? 'Fact Sheet' : resource.category.replace('-', ' ')}</Badge>
             <CardTitle className="text-lg leading-snug">{resource.title}</CardTitle>
         </div>
       </CardHeader>

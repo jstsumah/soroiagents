@@ -317,7 +317,7 @@ export function ResourceUploadForm({ isItinerary = false }: ResourceUploadFormPr
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {DOWNLOAD_CATEGORIES.map(cat => <SelectItem key={cat} value={cat} className="capitalize">{cat.replace('-', ' ')}</SelectItem>)}
+                          {DOWNLOAD_CATEGORIES.map(cat => <SelectItem key={cat} value={cat} className="capitalize">{cat === 'factsheet' ? 'Fact Sheet' : cat.replace('-', ' ')}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <FormMessage />

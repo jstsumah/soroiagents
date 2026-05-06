@@ -68,7 +68,7 @@ You can view and edit your personal and company information by clicking on your 
 The "Resources" section in the sidebar gives you access to all materials based on your assigned tier.
 
 -   **Rates, Deals, Itineraries, etc.:** Each page provides a filtered view of resources specific to that category. You can search and sort to find what you need quickly.
--   **Downloads:** This page consolidates all downloadable files like brochures, factsheets, images, videos, and more. You can filter by category using the tabs at the top.
+-   **Downloads:** This page consolidates all downloadable files like brochures, fact sheets, images, videos, and more. You can filter by category using the tabs at the top.
 -   **Downloading:** Simply click the "Download" button on any resource card to get the file.
 
 ### Contacting Support

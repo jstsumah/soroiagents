@@ -31,7 +31,7 @@ To simplify the experience for your agents, we consolidated how they access all 
 
 - **Unified Resource Page:** The separate pages for "Rates," "Exclusive Deals," "Packaged Itineraries," and "Downloads" have all been merged into a single, comprehensive page located at `/app/agent/resources`.
 
-- **Tab-Based Navigation:** On this unified page, agents can now easily filter resources using a clean, tab-based interface to switch between categories like Brochures, Images, Videos, Factsheets, and more.
+- **Tab-Based Navigation:** On this unified page, agents can now easily filter resources using a clean, tab-based interface to switch between categories like Brochures, Images, Videos, Fact Sheets, and more.
 
 - **Corrected Sidebar Navigation:** We fixed the main sidebar menu to ensure the "Downloads" link correctly directs users to the new, all-in-one resource center, providing a seamless and intuitive user journey.
 

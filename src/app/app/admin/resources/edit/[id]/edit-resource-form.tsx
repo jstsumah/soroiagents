@@ -217,7 +217,7 @@ const EditResourceFormComponent = ({ resource }: EditResourceFormProps) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {CATEGORIES.map(cat => <SelectItem key={cat} value={cat} className="capitalize">{cat.replace('-', ' ')}</SelectItem>)}
+                      {CATEGORIES.map(cat => <SelectItem key={cat} value={cat} className="capitalize">{cat === 'factsheet' ? 'Fact Sheet' : cat.replace('-', ' ')}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <FormMessage />

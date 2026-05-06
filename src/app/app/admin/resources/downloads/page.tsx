@@ -217,11 +217,20 @@ export default function AdminDownloadsPage() {
         </div>
         ) : (
           <Tabs defaultValue="all">
-            <TabsList className="flex flex-wrap h-auto w-full justify-start gap-1 p-1 md:grid md:grid-cols-8">
-              <TabsTrigger value="all">All</TabsTrigger>
+            <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 p-2 bg-primary border border-primary/20 rounded-xl shadow-xl md:grid md:grid-cols-8">
+              <TabsTrigger 
+                value="all" 
+                className="rounded-lg px-6 py-2.5 text-primary-foreground/70 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all duration-200"
+              >
+                All
+              </TabsTrigger>
               {DOWNLOAD_CATEGORIES.map(category => (
-                <TabsTrigger key={category} value={category} className="capitalize px-4">
-                    {category === 'activity-sheets' ? 'Activities' : category === 'how-to-get-there' ? 'How To Get There' : category.replace('-', ' ')}
+                <TabsTrigger 
+                    key={category} 
+                    value={category} 
+                    className="capitalize rounded-lg px-6 py-2.5 text-primary-foreground/70 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all duration-200"
+                >
+                    {category === 'activity-sheets' ? 'Activities' : category === 'how-to-get-there' ? 'How To Get There' : category === 'factsheet' ? 'Fact Sheet' : category.replace('-', ' ')}
                 </TabsTrigger>
               ))}
             </TabsList>
