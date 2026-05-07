@@ -152,7 +152,7 @@ export default function AgentDownloadsPage() {
                 value={category} 
                 className="capitalize rounded-lg px-6 py-2.5 text-primary-foreground/70 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all duration-200"
             >
-                {category === 'activity-sheets' ? 'Activities' : category === 'how-to-get-there' ? 'How To Get There' : category === 'factsheet' ? 'Fact Sheet' : category.replace('-', ' ')}
+                {category === 'activity-sheets' ? 'Activities' : category === 'how-to-get-there' ? 'How To Get There' : category === 'factsheet' ? 'Fact Sheets' : category === 'spa-menu' ? 'Spa Menus' : category.replace('-', ' ')}
             </TabsTrigger>
           ))}
         </TabsList>
