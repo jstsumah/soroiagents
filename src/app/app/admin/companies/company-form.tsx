@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import * as React from "react";
 import { FileText, Download, Trash2, Loader2 } from "lucide-react";
 import type { Company, SignedContract, User } from "@/lib/types";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 import { addCompany, updateCompany } from "@/services/company-service";
 import { countries } from "@/lib/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -217,10 +217,7 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
     const filePath = `companies/${companyName}/documents/${file.name}`;
     
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', filePath);
-      const url = await uploadFileFromFormData(formData);
+      const url = await uploadFile(file, filePath);
       
       const newDoc: SignedContract = {
         name: file.name,

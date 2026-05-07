@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { TIERS } from "@/lib/constants";
 import type { Rate, UserType } from "@/lib/types";
 import { addRate } from "@/services/rate-service";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 import { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
@@ -90,19 +90,13 @@ export function AddRateForm() {
       const uniqueId = new Date().getTime(); 
       const basePath = `rates/${values.title.replace(/\s+/g, '-')}-${uniqueId}`;
 
-      const coverFormData = new FormData();
-      coverFormData.append('file', coverImageFile);
-      coverFormData.append('path', `${basePath}/cover.jpg`);
-      const imageUrl = await uploadFileFromFormData(coverFormData);
+      const imageUrl = await uploadFile(coverImageFile, `${basePath}/cover.jpg`);
 
       setUploadProgress(pdfFile ? 50 : 100);
 
       let fileUrl: string | undefined = undefined;
       if (pdfFile) {
-        const pdfFormData = new FormData();
-        pdfFormData.append('file', pdfFile);
-        pdfFormData.append('path', `${basePath}/rate.pdf`);
-        fileUrl = await uploadFileFromFormData(pdfFormData);
+        fileUrl = await uploadFile(pdfFile, `${basePath}/rate.pdf`);
         setUploadProgress(100);
       }
       

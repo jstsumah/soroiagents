@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Save, Loader2, Trash2 } from "lucide-react";
 import { getCompanyDetails, saveCompanyDetails } from "@/services/settings-service";
 import { Skeleton } from "@/components/ui/skeleton";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const formSchema = z.object({
@@ -76,10 +76,8 @@ export function LoginBackgroundForm() {
       const imageFile = values.imageFile?.[0] as File | undefined;
 
       if (imageFile) {
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        formData.append('path', `settings/login-background.${imageFile.type.split('/')[1]}`);
-        imageUrl = await uploadFileFromFormData(formData);
+        const path = `settings/login-background.${imageFile.type.split('/')[1]}`;
+        imageUrl = await uploadFile(imageFile, path);
       }
 
       await saveCompanyDetails({ 

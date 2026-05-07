@@ -5,7 +5,7 @@ import type { PackagedItinerary } from '@/lib/types';
 import { getAuthenticatedUser, ensureAdmin, isAdmin } from './auth-service';
 import { logActivity } from './audit-log-service';
 
-import { deleteFile, uploadFile } from './storage-service';
+import { deleteFile } from './storage-service';
 
 export const getItineraries = async (): Promise<PackagedItinerary[]> => {
     const user = await getAuthenticatedUser();

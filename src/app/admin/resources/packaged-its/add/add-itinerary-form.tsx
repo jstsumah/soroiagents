@@ -27,7 +27,7 @@ import type { PackagedItinerary, UserType, ItineraryPackage, TravelLink } from "
 import { addItinerary, updateItinerary } from "@/services/itinerary-service";
 import * as React from 'react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 
 const USER_TYPES: UserType[] = ['local', 'international'];
 
@@ -118,10 +118,7 @@ const ItineraryFormComponent = ({ itinerary }: ItineraryFormProps) => {
   });
   
   const uploadFileAndGetURL = async (file: File, path: string): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('path', path);
-    return await uploadFileFromFormData(formData);
+    return uploadFile(file, path);
   };
 
 

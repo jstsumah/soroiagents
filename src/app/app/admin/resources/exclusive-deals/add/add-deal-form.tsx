@@ -28,7 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { TIERS } from "@/lib/constants";
 import type { ExclusiveDeal, UserType } from "@/lib/types";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 import { addDeal } from "@/services/deal-service";
 
 const USER_TYPES: UserType[] = ['local', 'international'];
@@ -75,10 +75,7 @@ export function AddDealForm() {
   });
 
   const uploadFileAndGetURL = async (file: File, path: string): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('path', path);
-    return await uploadFileFromFormData(formData);
+    return uploadFile(file, path);
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {

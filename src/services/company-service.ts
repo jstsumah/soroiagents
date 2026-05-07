@@ -7,7 +7,7 @@ import { getAuthenticatedUser } from './auth-service';
 import { logActivity } from './audit-log-service';
 import { ensureHttps } from '@/lib/utils';
 
-import { deleteFile, uploadFile } from './storage-service';
+import { deleteFile } from './storage-service';
 
 export const importCompanies = async (
     companies: Partial<Company>[]

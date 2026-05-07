@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { suggestResourceMetadata } from "@/ai/flows/suggest-resource-metadata";
 import { TIERS } from "@/lib/constants";
 import type { Tier, Category, Resource } from "@/lib/types";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 import { addResource } from "@/services/resource-service";
 import { useRouter } from "next/navigation";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -128,22 +128,7 @@ export function ResourceUploadForm({ isItinerary = false }: ResourceUploadFormPr
   };
 
   const uploadFileAndGetURL = async (file: File, path: string): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('path', path);
-    
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Upload failed with status ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.url;
+    return uploadFile(file, path);
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {

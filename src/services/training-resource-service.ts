@@ -5,7 +5,7 @@ import type { TrainingResource } from '@/lib/types';
 import { getAuthenticatedUser, ensureAdmin, isAdmin } from './auth-service';
 import { logActivity } from './audit-log-service';
 
-import { deleteFile, uploadFile } from './storage-service';
+import { deleteFile } from './storage-service';
 
 export const getTrainingResources = async (): Promise<TrainingResource[]> => {
     const user = await getAuthenticatedUser();

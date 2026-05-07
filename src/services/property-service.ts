@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Property } from '@/lib/types';
 import { logActivity } from './audit-log-service';
 import { getAuthenticatedUser, ensureAdmin, isAdmin } from './auth-service';
-import { deleteFile, uploadFile, uploadFileFromFormData } from './storage-service';
+import { deleteFile } from './storage-service';
 
 export const getProperties = async (): Promise<Property[]> => {
     const user = await getAuthenticatedUser();
@@ -180,19 +180,7 @@ export const searchProperties = async (searchQuery: string): Promise<Partial<Pro
     return data || [];
 }
 
-/**
- * Uploads a property image file from a client component (via server action).
- * This is a wrapper function to handle file uploads safely from the client.
- */
-export const uploadPropertyImage = async (base64: string, filePath: string, mimeType: string): Promise<string> => {
-    await ensureAdmin();
-    return uploadFile(base64, filePath, mimeType);
-};
 
-export const uploadPropertyImageFromFormData = async (formData: FormData): Promise<string> => {
-    await ensureAdmin();
-    return uploadFileFromFormData(formData);
-};
 
 const mapDbToProperty = (db: any): Property => ({
     id: db.id,

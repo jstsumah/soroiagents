@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { addLocation, updateLocation } from "@/services/how-to-get-there-service";
 import * as React from 'react';
 import Image from "next/image";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 
 interface FlightRoute {
   departingFrom: string;
@@ -266,11 +266,8 @@ export function HowToGetThereForm({ locationData }: { locationData?: HowToGetThe
   // fileToBase64 removed — using FormData upload to avoid Next.js payload limits
 
   const uploadMapImage = async (file: File, locationName: string): Promise<string> => {
-    // Use FormData to avoid base64 payload size limits in Next.js server actions
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('path', `how-to-get-there/${locationName.replace(/\s+/g, '-')}/map-${file.name}`);
-    return await uploadFileFromFormData(formData);
+    const path = `how-to-get-there/${locationName.replace(/\s+/g, '-')}/map-${file.name}`;
+    return uploadFile(file, path);
   };
 
   // Manual validation to avoid zod nested object serialization

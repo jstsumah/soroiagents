@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { TIERS } from "@/lib/constants";
 import type { Rate, UserType } from "@/lib/types";
 import { updateRate } from "@/services/rate-service";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 import * as React from "react";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
@@ -99,19 +99,13 @@ const EditRateFormComponent = ({ rate }: EditRateFormProps) => {
       let filesUploaded = 0;
 
       if (coverImageFile) {
-        const formData = new FormData();
-        formData.append('file', coverImageFile);
-        formData.append('path', `${basePath}/cover.jpg`);
-        imageUrl = await uploadFileFromFormData(formData);
+        imageUrl = await uploadFile(coverImageFile, `${basePath}/cover.jpg`);
         filesUploaded++;
         setUploadProgress((filesUploaded/totalFiles) * 100);
       }
       
       if (pdfFile) {
-        const formData = new FormData();
-        formData.append('file', pdfFile);
-        formData.append('path', `${basePath}/rate.pdf`);
-        fileUrl = await uploadFileFromFormData(formData);
+        fileUrl = await uploadFile(pdfFile, `${basePath}/rate.pdf`);
         filesUploaded++;
         setUploadProgress((filesUploaded/totalFiles) * 100);
       }

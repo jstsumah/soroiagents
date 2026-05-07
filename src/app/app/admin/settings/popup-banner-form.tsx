@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Save, Loader2, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 import { getPopupBannerSettings, savePopupBannerSettings } from "@/services/settings-service";
 import Image from "next/image";
 import { Switch } from "@/components/ui/switch";
@@ -105,10 +105,8 @@ export function PopupBannerForm() {
       const imageFile = values.imageFile?.[0] as File | undefined;
 
       if (imageFile) {
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        formData.append('path', `settings/popup-banner-image.${imageFile.type.split('/')[1]}`);
-        imageUrlToSave = await uploadFileFromFormData(formData);
+        const path = `settings/popup-banner-image.${imageFile.type.split('/')[1]}`;
+        imageUrlToSave = await uploadFile(imageFile, path);
       }
       
       const settingsToSave = { ...values, imageUrl: imageUrlToSave, imageFile: undefined };

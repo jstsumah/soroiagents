@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Save, Loader2, Trash2 } from "lucide-react";
 import { getPromotionCardSettings, savePromotionCardSettings } from "@/services/settings-service";
 import { Skeleton } from "@/components/ui/skeleton";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 import Image from "next/image";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
@@ -93,17 +93,13 @@ export function PromotionCardForm() {
       const linkFile = values.linkFile?.[0] as File | undefined;
       
       if (imageFile) {
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        formData.append('path', `settings/promotion-card-image.${imageFile.type.split('/')[1]}`);
-        imageUrl = await uploadFileFromFormData(formData);
+        const path = `settings/promotion-card-image.${imageFile.type.split('/')[1]}`;
+        imageUrl = await uploadFile(imageFile, path);
       }
 
       if (values.linkType === 'file' && linkFile) {
-          const fileFormData = new FormData();
-          fileFormData.append('file', linkFile);
-          fileFormData.append('path', `settings/promotion-file-${linkFile.name}`);
-          linkUrl = await uploadFileFromFormData(fileFormData);
+          const path = `settings/promotion-file-${linkFile.name}`;
+          linkUrl = await uploadFile(linkFile, path);
       }
 
       await savePromotionCardSettings({ 

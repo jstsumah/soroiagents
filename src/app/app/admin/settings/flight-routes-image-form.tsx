@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Save, Loader2, Trash2 } from "lucide-react";
 import { getCompanyDetails, saveCompanyDetails } from "@/services/settings-service";
 import { Skeleton } from "@/components/ui/skeleton";
-import { uploadFileFromFormData } from "@/services/storage-service";
+import { uploadFile } from "@/lib/upload-utils";
 
 const formSchema = z.object({
   imageFile: z.any().optional(),
@@ -57,10 +57,8 @@ export function FlightRoutesImageForm() {
       const imageFile = values.imageFile?.[0] as File | undefined;
 
       if (imageFile) {
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        formData.append('path', `settings/flight-routes-image.${imageFile.type.split('/')[1]}`);
-        imageUrl = await uploadFileFromFormData(formData);
+        const path = `settings/flight-routes-image.${imageFile.type.split('/')[1]}`;
+        imageUrl = await uploadFile(imageFile, path);
       }
 
       await saveCompanyDetails({ flightRoutesImageUrl: imageUrl });
