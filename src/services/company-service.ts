@@ -147,8 +147,16 @@ const isDuplicateCompany = async (company: Partial<Company>, excludeId?: string)
     const supabase = await createClient();
     
     for (const field of uniqueFields) {
-        const value = company[field];
+        let value = company[field];
         if (value && typeof value === 'string') {
+            value = value.trim();
+            if (value === '') continue;
+
+            // Normalize website_url for consistent comparison
+            if (field === 'website_url') {
+                value = ensureHttps(value);
+            }
+
             let query = supabase
                 .from('companies')
                 .select('id')
@@ -212,9 +220,15 @@ export const getCompany = async (id: string): Promise<Company | null> => {
 };
 
 export const addCompany = async (data: Omit<Company, 'id'>): Promise<string> => {
-    const duplicateCheck = await isDuplicateCompany(data);
+    // Normalize before duplicate check
+    const normalizedData = { ...data };
+    if (normalizedData.website_url) {
+        normalizedData.website_url = ensureHttps(normalizedData.website_url);
+    }
+
+    const duplicateCheck = await isDuplicateCompany(normalizedData);
     if (duplicateCheck) {
-        throw new Error("This company already exists. Please contact support to be linked to this company.");
+        throw new Error(`This company already exists (duplicate ${duplicateCheck.field.replace('_', ' ')}: "${duplicateCheck.value}"). Please contact support to be linked to this company.`);
     }
 
     const dbData = mapCompanyToDb(data);
@@ -245,11 +259,48 @@ export const addCompany = async (data: Omit<Company, 'id'>): Promise<string> => 
 };
 
 export const updateCompany = async (id: string, data: Partial<Omit<Company, 'id'>>): Promise<void> => {
-    const duplicateCheck = await isDuplicateCompany(data, id);
-    if (duplicateCheck) {
-        throw new Error(`Another company with the same ${duplicateCheck.field.replace('_', ' ')} already exists: "${duplicateCheck.value}".`);
+    console.log('[updateCompany] called for id=', id);
+    const current = await getCompany(id);
+    if (!current) throw new Error("Company not found");
+
+    // Only check duplicates for fields that are actually changing
+    // This is crucial because the database has pre-existing duplicates that shouldn't block unrelated updates.
+    const changedFields: Partial<Company> = {};
+    const uniqueFields = ['name', 'phone', 'website_url', 'vat_no', 'company_reg', 'tra_license'];
+    
+    for (const field of uniqueFields) {
+        const key = field as keyof Company;
+        let newValue = data[key];
+        let currentValue = current[key];
+
+        if (newValue !== undefined) {
+            // Normalize for comparison
+            const normNew = typeof newValue === 'string' ? newValue.trim() : newValue;
+            const normCurrent = typeof currentValue === 'string' ? currentValue.trim() : currentValue;
+
+            // Special case for website_url normalization
+            if (key === 'website_url') {
+                const finalNew = normNew ? ensureHttps(normNew as string) : normNew;
+                const finalCurrent = normCurrent ? ensureHttps(normCurrent as string) : normCurrent;
+                if (finalNew !== finalCurrent) {
+                    (changedFields as any)[key] = finalNew;
+                }
+            } else if (normNew !== normCurrent) {
+                (changedFields as any)[key] = normNew;
+            }
+        }
     }
 
+    console.log('[updateCompany] changed unique fields:', changedFields);
+
+    if (Object.keys(changedFields).length > 0) {
+        const duplicateCheck = await isDuplicateCompany(changedFields, id);
+        if (duplicateCheck) {
+            throw new Error(`Another company with the same ${duplicateCheck.field.replace('_', ' ')} already exists: "${duplicateCheck.value}".`);
+        }
+    }
+
+    console.log('[updateCompany] Executing DB update...');
     const dbData = mapCompanyToDb(data);
     const supabaseAdmin = getSupabaseAdmin();
     const { error } = await supabaseAdmin
@@ -257,7 +308,11 @@ export const updateCompany = async (id: string, data: Partial<Omit<Company, 'id'
         .update(dbData)
         .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+        console.error('[updateCompany] DB error:', error);
+        throw error;
+    }
+    console.log('[updateCompany] DB update success for id=', id);
 
     try {
         const user = await getAuthenticatedUser();
@@ -266,13 +321,14 @@ export const updateCompany = async (id: string, data: Partial<Omit<Company, 'id'
                 userId: user.uid,
                 userName: user.name,
                 action: 'company.update',
-                details: { companyId: id, companyName: data.name || 'Unknown' }
+                details: { companyId: id, companyName: data.name || current.name }
             });
         }
     } catch(e) {
         console.error("Audit log failed for company update:", e);
     }
 };
+
 
 export const deleteCompany = async (id: string): Promise<void> => {
     const companyData = await getCompany(id);

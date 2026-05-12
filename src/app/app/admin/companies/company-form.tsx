@@ -33,7 +33,8 @@ import { Control } from "react-hook-form";
 const signedContractSchema = z.object({
     name: z.string(),
     url: z.string(),
-    uploaded_at: z.date(),
+    // z.coerce.date() handles both Date objects and ISO date strings from the DB
+    uploaded_at: z.coerce.date(),
 });
 
 const phoneRegex = new RegExp(
@@ -46,7 +47,8 @@ const websiteRegex = new RegExp(
 
 const formSchema = z.object({
   name: z.string().min(3, "Company name is required (min 3 characters)."),
-  phone: z.string().regex(phoneRegex, 'Phone number is required in international format (e.g., +254712345678).'),
+  // Phone: any string allowed — format hint shown in placeholder, not enforced
+  phone: z.string().optional().or(z.literal('')),
   website_url: z.string().regex(websiteRegex, 'Please enter a valid URL (e.g., yourdomain.com).').or(z.literal('')),
   street_address: z.string().min(1, "Street address is required."),
   city: z.string().min(1, "City is required."),
@@ -59,8 +61,10 @@ const formSchema = z.object({
   new_contract_file: z.any().optional(),
   company_reg_doc_file: z.any().optional(),
   tra_license_doc_file: z.any().optional(),
+  // z.coerce.date() handles ISO date strings from DB as well as Date objects
   signed_contracts: z.array(signedContractSchema).optional(),
-  company_reg_doc: z.any().refine((val) => val !== null && val !== undefined, "Company registration document is required."),
+  // company_reg_doc is optional — many existing companies don't have it uploaded yet
+  company_reg_doc: z.any().optional().nullable(),
   tra_license_doc: signedContractSchema.optional().nullable(),
 });
 
@@ -295,9 +299,19 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
   
 
 
+  const onInvalidForm = (errors: any) => {
+    console.error('[CompanyForm] Validation errors prevented submit:', errors);
+    const firstError = Object.values(errors)[0] as any;
+    toast({
+      variant: 'destructive',
+      title: 'Please fix the form errors',
+      description: firstError?.message || 'Some required fields are missing or invalid.',
+    });
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit, onInvalidForm)} className="space-y-6">
         <Card>
             <CardHeader>
                 <CardTitle>Company Details</CardTitle>
