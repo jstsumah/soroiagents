@@ -32,32 +32,44 @@ const phoneRegex = new RegExp(
   /^\+[1-9]\d{1,14}$/
 );
 
-const editFormSchema = z.object({
-  name: z.string().min(3, "Name is required."),
-  email: z.string().email("A valid email is required."),
-  password: z.string().optional(),
-  companyId: z.string().optional(),
-  company: z.string().optional(),
-  phone: z.string().regex(phoneRegex, 'Phone number must be in international format (e.g., +254712345678).').optional().or(z.literal('')),
-  country: z.string().optional(),
-  type: z.enum(['local', 'international'], { required_error: "Please select an agent type." }),
-  tier: z.enum(TIERS, { required_error: "Please select a tier." }),
-  status: z.enum(['active', 'inactive', 'pending'], { required_error: "Please select a status." }),
-  role: z.enum(ROLES, { required_error: "Please select a user role."}),
-  dmc: z.string().optional(),
-  payment_terms: z.string().optional(),
-  remarks: z.string().optional(),
-  canViewUsers: z.boolean().default(false),
-  hasAllTierAccess: z.boolean().default(false),
-}).refine((data) => {
-    if (data.type === 'international' && !data.dmc) {
-        return false;
-    }
-    return true;
-}, {
-    message: "DMC is required for international agents.",
-    path: ["dmc"],
-});
+const getEditFormSchema = (isAdmin: boolean) => {
+  const base = z.object({
+    name: z.string().min(3, "Name is required."),
+    email: z.string().email("A valid email is required."),
+    password: z.string().optional(),
+    companyId: z.string().optional(),
+    company: z.string().optional(),
+    phone: z.string().regex(phoneRegex, 'Phone number must be in international format (e.g., +254712345678).').optional().or(z.literal('')),
+    country: z.string().optional(),
+    type: z.enum(['local', 'international'], { required_error: "Please select an agent type." }),
+    tier: z.enum(TIERS, { required_error: "Please select a tier." }),
+    status: z.enum(['active', 'inactive', 'pending'], { required_error: "Please select a status." }),
+    role: z.enum(ROLES, { required_error: "Please select a user role."}),
+    dmc: z.string().optional(),
+    payment_terms: z.string().optional(),
+    remarks: z.string().optional(),
+    canViewUsers: z.boolean().default(false),
+    hasAllTierAccess: z.boolean().default(false),
+  });
+
+  if (isAdmin) {
+    // For admins, we make the main fields optional to allow "dirty" data saves
+    return base.partial().extend({
+        // email still needs to be an email if provided
+        email: z.string().email("A valid email is required.").optional().or(z.literal('')),
+    });
+  }
+
+  return base.refine((data) => {
+      if (data.type === 'international' && !data.dmc) {
+          return false;
+      }
+      return true;
+  }, {
+      message: "DMC is required for international agents.",
+      path: ["dmc"],
+  });
+};
 
 
 export default function EditUserPage({ params }: { params: { uid: string } }) {
@@ -70,8 +82,11 @@ export default function EditUserPage({ params }: { params: { uid: string } }) {
     const [isSaving, setIsSaving] = React.useState(false);
     const [tierChangeConfirmation, setTierChangeConfirmation] = React.useState<any | null>(null);
 
-    const form = useForm<z.infer<typeof editFormSchema>>({
-      resolver: zodResolver(editFormSchema)
+    const isAdmin = viewingUser?.role === 'Admin' || viewingUser?.role === 'Super Admin';
+    const schema = React.useMemo(() => getEditFormSchema(isAdmin), [isAdmin]);
+
+    const form = useForm<any>({
+      resolver: zodResolver(schema)
     });
 
     React.useEffect(() => {

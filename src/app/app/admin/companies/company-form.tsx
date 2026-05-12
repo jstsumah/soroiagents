@@ -45,28 +45,35 @@ const websiteRegex = new RegExp(
   /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/
 );
 
-const formSchema = z.object({
-  name: z.string().min(3, "Company name is required (min 3 characters)."),
-  // Phone: any string allowed — format hint shown in placeholder, not enforced
-  phone: z.string().optional().or(z.literal('')),
-  website_url: z.string().regex(websiteRegex, 'Please enter a valid URL (e.g., yourdomain.com).').or(z.literal('')),
-  street_address: z.string().min(1, "Street address is required."),
-  city: z.string().min(1, "City is required."),
-  country: z.string().min(1, "Country is required."),
-  postal_address: z.string().optional(),
-  zip_code: z.string().optional(),
-  vat_no: z.string().optional(),
-  company_reg: z.string().min(1, "Company registration number is required."),
-  tra_license: z.string().optional(),
-  new_contract_file: z.any().optional(),
-  company_reg_doc_file: z.any().optional(),
-  tra_license_doc_file: z.any().optional(),
-  // z.coerce.date() handles ISO date strings from DB as well as Date objects
-  signed_contracts: z.array(signedContractSchema).optional(),
-  // company_reg_doc is optional — many existing companies don't have it uploaded yet
-  company_reg_doc: z.any().optional().nullable(),
-  tra_license_doc: signedContractSchema.optional().nullable(),
-});
+const getCompanyFormSchema = (isAdmin: boolean) => {
+  const base = z.object({
+    name: z.string().min(3, "Company name is required (min 3 characters)."),
+    phone: z.string().optional().or(z.literal('')),
+    website_url: z.string().regex(websiteRegex, 'Please enter a valid URL (e.g., yourdomain.com).').optional().or(z.literal('')),
+    street_address: z.string().min(1, "Street address is required."),
+    city: z.string().min(1, "City is required."),
+    country: z.string().min(1, "Country is required."),
+    postal_address: z.string().optional(),
+    zip_code: z.string().optional(),
+    vat_no: z.string().optional(),
+    company_reg: z.string().min(1, "Company registration number is required."),
+    tra_license: z.string().optional(),
+    new_contract_file: z.any().optional(),
+    company_reg_doc_file: z.any().optional(),
+    tra_license_doc_file: z.any().optional(),
+    signed_contracts: z.array(signedContractSchema).optional(),
+    company_reg_doc: z.any().optional().nullable(),
+    tra_license_doc: signedContractSchema.optional().nullable(),
+  });
+
+  if (isAdmin) {
+    return base.partial().extend({
+      name: z.string().min(3, "Company name is required (min 3 characters).").optional().or(z.literal('')),
+    });
+  }
+
+  return base;
+};
 
 // ── Stable sub-component defined OUTSIDE the parent so its identity never
 // changes between renders. Defining it inside a render function causes React
@@ -148,12 +155,14 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
   const { toast } = useToast();
   const isEditMode = !!company;
   const router = useRouter();
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
+  const schema = React.useMemo(() => getCompanyFormSchema(isAdmin), [isAdmin]);
   const [isSaving, setIsSaving] = React.useState(false);
 
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<any>({
+    resolver: zodResolver(schema),
     defaultValues: {
       name: company?.name || "",
       phone: company?.phone || "",

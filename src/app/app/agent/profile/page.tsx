@@ -23,41 +23,53 @@ const phoneRegex = new RegExp(
   /^\+[1-9]\d{1,14}$/
 );
 
-const formSchema = z.object({
-  name: z.string().min(3, "Name is required."),
-  email: z.string().email("A valid email is required."),
-  password: z.string().optional(),
-  companyId: z.string().optional(),
-  company: z.string().optional(),
-  phone: z.string().regex(phoneRegex, 'Phone number must be in international format (e.g., +254712345678).').optional().or(z.literal('')),
-  country: z.string().optional(),
-  type: z.enum(['local', 'international'], { required_error: "Please select an agent type." }),
-  tier: z.enum(TIERS, { required_error: "Please select a tier." }),
-  status: z.enum(['active', 'inactive', 'pending'], { required_error: "Please select a status." }),
-  role: z.enum(ROLES, { required_error: "Please select a user role."}),
-  dmc: z.string().optional(),
-  payment_terms: z.string().optional(),
-  remarks: z.string().optional(),
-}).refine((data) => {
-    console.log("Validating refinement...", data.type, data.dmc);
-    if (data.type === 'international' && !data.dmc) {
-        console.warn("DMC missing for international agent");
-        return false;
-    }
-    return true;
-}, {
-    message: "DMC is required for international agents.",
-    path: ["dmc"],
-});
+const getProfileFormSchema = (isAdmin: boolean) => {
+  const base = z.object({
+    name: z.string().min(3, "Name is required."),
+    email: z.string().email("A valid email is required."),
+    password: z.string().optional(),
+    companyId: z.string().optional(),
+    company: z.string().optional(),
+    phone: z.string().regex(phoneRegex, 'Phone number must be in international format (e.g., +254712345678).').optional().or(z.literal('')),
+    country: z.string().optional(),
+    type: z.enum(['local', 'international'], { required_error: "Please select an agent type." }),
+    tier: z.enum(TIERS, { required_error: "Please select a tier." }),
+    status: z.enum(['active', 'inactive', 'pending'], { required_error: "Please select a status." }),
+    role: z.enum(ROLES, { required_error: "Please select a user role."}),
+    dmc: z.string().optional(),
+    payment_terms: z.string().optional(),
+    remarks: z.string().optional(),
+  });
+
+  if (isAdmin) {
+    return base.partial().extend({
+      email: z.string().email("A valid email is required.").optional().or(z.literal('')),
+    });
+  }
+
+  return base.refine((data) => {
+      if (data.type === 'international' && !data.dmc) {
+          return false;
+      }
+      return true;
+  }, {
+      message: "DMC is required for international agents.",
+      path: ["dmc"],
+  });
+};
 
 
 function AgentProfileForm({ agent }: { agent: User }) {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
+  const schema = React.useMemo(() => getProfileFormSchema(isAdmin), [isAdmin]);
+
   const { toast } = useToast();
   const router = useRouter();
   const [isSaving, setIsSaving] = React.useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<any>({
+    resolver: zodResolver(schema),
     defaultValues: {
       ...agent,
       password: '',
