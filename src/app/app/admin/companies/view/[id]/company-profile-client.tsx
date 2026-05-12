@@ -119,8 +119,8 @@ export function CompanyProfileClient({ company }: { company: Company }) {
   const DocumentLink = ({ doc, label }: { doc?: SignedContract, label: string }) => (
     <DetailItem label={label}>
         {doc?.url ? (
-            <a href={doc.url} download={doc.name} className="flex items-center gap-2 text-primary hover:underline">
-                <Download className="h-4 w-4" />
+            <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline">
+                <FileText className="h-4 w-4" />
                 <span>{doc.name}</span>
             </a>
         ) : <p className="text-base font-semibold">N/A</p>}
@@ -262,10 +262,10 @@ export function CompanyProfileClient({ company }: { company: Company }) {
                                             </p>
                                         </div>
                                     </div>
-                                    <a href={contract.url} download>
+                                    <a href={contract.url} target="_blank" rel="noopener noreferrer">
                                         <Button variant="outline" size="sm">
-                                            <Download className="mr-2 h-4 w-4" />
-                                            Download
+                                            <FileText className="mr-2 h-4 w-4" />
+                                            View
                                         </Button>
                                     </a>
                                 </li>

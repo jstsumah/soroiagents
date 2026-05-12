@@ -22,7 +22,7 @@ export async function uploadFile(file: File, path: string): Promise<string> {
     throw new Error(errorData.error || `Failed to get upload URL (${signedUrlResponse.status})`);
   }
 
-  const { signedUrl, publicUrl } = await signedUrlResponse.json();
+  const { signedUrl, publicUrl, url } = await signedUrlResponse.json();
 
   // Step 2: Upload the file directly to Supabase (bypasses Next.js body limits)
   const uploadResponse = await fetch(signedUrl, {
@@ -38,5 +38,5 @@ export async function uploadFile(file: File, path: string): Promise<string> {
     throw new Error(`Direct upload to storage failed (${uploadResponse.status}): ${errorText}`);
   }
 
-  return publicUrl;
+  return publicUrl || url;
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { ensureAdmin } from '@/services/auth-service';
+import { ensureAdmin, getAuthenticatedUser } from '@/services/auth-service';
 
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
@@ -19,14 +19,17 @@ const BUCKET_NAME = 'soroi';
 export async function POST(request: NextRequest) {
   try {
     // 1. Verify Authentication
-    await ensureAdmin();
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized: Please log in' }, { status: 401 });
+    }
 
     const contentType = request.headers.get('content-type') ?? '';
 
     // --- Mode: Get a signed upload URL (recommended for large files) ---
     if (contentType.includes('application/json')) {
       const body = await request.json();
-      const { path, contentType: fileContentType } = body;
+      const { path } = body;
 
       if (!path || typeof path !== 'string') {
         return NextResponse.json({ error: 'Missing path' }, { status: 400 });
@@ -61,6 +64,7 @@ export async function POST(request: NextRequest) {
         token: data.token,
         path: data.path,
         publicUrl,
+        url: publicUrl, // Compatibility
       });
     }
 
@@ -104,7 +108,10 @@ export async function POST(request: NextRequest) {
       .from(BUCKET_NAME)
       .getPublicUrl(path);
 
-    return NextResponse.json({ url: publicUrl });
+    return NextResponse.json({ 
+      publicUrl,
+      url: publicUrl 
+    });
 
   } catch (error: any) {
     console.error('[API Upload] Error:', error);
