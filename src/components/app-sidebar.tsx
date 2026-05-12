@@ -5,12 +5,24 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarTrigger } from "@/components/ui/sidebar";
-import { Home, Users, Folder, Settings, DollarSign, Tag, Package, Car, Info, Building, BookOpen, LayoutDashboard, CalendarCheck, FileDown, Phone, MessageSquare, History, CreditCard, ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Home, Users, Folder, Settings, DollarSign, Tag, Package, Car, Info, Building, BookOpen, LayoutDashboard, CalendarCheck, FileDown, Phone, MessageSquare, History, CreditCard, ChevronDown, PanelLeftClose, PanelLeftOpen, AlertTriangle } from "lucide-react";
 import type { User } from '@/lib/types';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
+import { getProfileCompletion } from '@/services/user-service';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useRouter } from 'next/navigation';
 
 const resourceSubNav = [
     { href: '/rates', icon: DollarSign, label: 'Rates' },
@@ -76,6 +88,25 @@ export function AppSidebar({ user }: { user: User }) {
   const currentUserNav = isAdmin ? adminNavItems(user) : agentNavItems(user);
   const { state, open, setOpen } = useSidebar();
   const isCollapsed = state === 'collapsed';
+  const router = useRouter();
+  
+  const [completion, setCompletion] = React.useState<{score: number, missingFields: string[], isComplete: boolean} | null>(null);
+  const [showGate, setShowGate] = React.useState(false);
+  const [pendingUrl, setPendingUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (user && user.role === 'Agent') {
+      getProfileCompletion(user.uid).then(setCompletion);
+    }
+  }, [user]);
+
+  const handleResourceClick = (e: React.MouseEvent, href: string) => {
+    if (user.role === 'Agent' && completion && !completion.isComplete) {
+      e.preventDefault();
+      setPendingUrl(href);
+      setShowGate(true);
+    }
+  };
 
   return (
     <>
@@ -88,7 +119,10 @@ export function AppSidebar({ user }: { user: User }) {
                 return (
                     <Collapsible key={item.id} defaultOpen={isDefaultOpen}>
                         <CollapsibleTrigger asChild>
-                             <Link href={item.subItems[0].href}>
+                             <Link 
+                                href={item.subItems[0].href}
+                                onClick={(e) => item.id === 'resources' && handleResourceClick(e, item.subItems![0].href)}
+                             >
                                 <SidebarMenuButton 
                                     isActive={isResourceSectionActive}
                                     tooltip={item.label}
@@ -121,7 +155,10 @@ export function AppSidebar({ user }: { user: User }) {
                                                     {linkContent}
                                                 </a>
                                             ) : (
-                                                <Link href={subItem.href}>
+                                                <Link 
+                                                    href={subItem.href}
+                                                    onClick={(e) => handleResourceClick(e, subItem.href)}
+                                                >
                                                     {linkContent}
                                                 </Link>
                                             )}
@@ -163,6 +200,49 @@ export function AppSidebar({ user }: { user: User }) {
               <span className="truncate group-data-[collapsible=icon]:hidden">{isCollapsed ? 'Expand' : 'Collapse'}</span>
             </SidebarMenuButton>
         </SidebarFooter>
+
+        <AlertDialog open={showGate} onOpenChange={setShowGate}>
+            <AlertDialogContent className="max-w-[400px]">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-warning" />
+                        Complete Your Profile
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        A complete profile helps you get better rates, higher commission tiers, and exclusive offers tailored to your agency. 
+                        Your current progress is <strong>{completion?.score}%</strong>.
+                        <div className="mt-4 p-3 bg-muted rounded-md text-xs">
+                            <span className="font-semibold block mb-1">Missing details:</span>
+                            <ul className="list-disc pl-4 space-y-1">
+                                {completion?.missingFields.map((field, i) => (
+                                    <li key={i}>{field}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                    {user.last_seen && (
+                        <AlertDialogCancel 
+                            onClick={() => {
+                                setShowGate(false);
+                                if (pendingUrl) router.push(pendingUrl);
+                            }}
+                        >
+                            Not Now, Proceed
+                        </AlertDialogCancel>
+                    )}
+                    <AlertDialogAction 
+                        onClick={() => {
+                            setShowGate(false);
+                            router.push('/app/agent/profile');
+                        }}
+                    >
+                        {user.last_seen ? 'Update Profile First' : 'Complete Profile to Access'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </>
   );
 }

@@ -9,6 +9,7 @@ import { sendEmail } from './email-service';
 import { getCompanyDetails } from './settings-service';
 import { getEmailTemplateByEvent } from './email-template-service';
 import { ensureAdmin, isAdmin } from './auth-service';
+import { getCompany } from './company-service';
 
 /**
  * Internal helper to fetch a user profile by ID using the admin client.
@@ -658,4 +659,53 @@ export const isAgentProfileComplete = async (uid: string): Promise<boolean> => {
     const user = await getUser(uid);
     if (!user || user.role !== 'Agent') return true;
     return !!(user.name && user.email && user.phone && user.companyId);
+};
+
+export const getProfileCompletion = async (uid: string): Promise<{
+    score: number;
+    missingFields: string[];
+    isComplete: boolean;
+}> => {
+    const user = await getUser(uid);
+    if (!user) return { score: 0, missingFields: [], isComplete: false };
+    
+    const missingFields: string[] = [];
+    let totalPoints = 0;
+    const maxPoints = 12; // 6 user fields + 6 company fields
+
+    // User Fields (6 points)
+    if (user.name && user.name.trim().length > 0) totalPoints++; else missingFields.push('Full Name');
+    if (user.phone && user.phone.trim().length > 0) totalPoints++; else missingFields.push('Personal Phone');
+    if (user.country && user.country.trim().length > 0) totalPoints++; else missingFields.push('Country');
+    if (user.type) totalPoints++; else missingFields.push('Agent Type');
+    if (user.companyId) totalPoints++; else missingFields.push('Company Link');
+    if (user.type === 'international') {
+        if (user.dmc && user.dmc.trim().length > 0) totalPoints++; else missingFields.push('DMC Name');
+    } else {
+        totalPoints++; // Auto-point for local agents on DMC field
+    }
+
+    // Company Fields (6 points)
+    if (user.companyId) {
+        const company = await getCompany(user.companyId);
+        if (company) {
+            if (company.name && company.name.trim().length > 0) totalPoints++; else missingFields.push('Company Name');
+            if (company.phone && company.phone.trim().length > 0) totalPoints++; else missingFields.push('Company Phone');
+            if (company.website_url && company.website_url.trim().length > 0) totalPoints++; else missingFields.push('Company Website');
+            if (company.street_address && company.street_address.trim().length > 0) totalPoints++; else missingFields.push('Company Address');
+            if (company.city && company.city.trim().length > 0) totalPoints++; else missingFields.push('Company City');
+            if (company.company_reg && company.company_reg.trim().length > 0) totalPoints++; else missingFields.push('Company Registration');
+        } else {
+            missingFields.push('Company Profile');
+        }
+    } else {
+        missingFields.push('Company Profile');
+    }
+
+    const score = Math.round((totalPoints / maxPoints) * 100);
+    return {
+        score,
+        missingFields,
+        isComplete: score === 100
+    };
 };

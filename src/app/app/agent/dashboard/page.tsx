@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { getUser, isAgentProfileComplete } from '@/services/user-service';
+import { getUser, isAgentProfileComplete, getProfileCompletion } from '@/services/user-service';
 import { getProperties, getFeaturedProperty } from '@/services/property-service';
 import { getResources } from '@/services/resource-service';
 import { getDeals, getFeaturedDeal } from '@/services/deal-service';
@@ -11,6 +11,7 @@ import { getRates } from '@/services/rate-service';
 import { getItineraries } from '@/services/itinerary-service';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Building, FileText, Gift, Star, AlertTriangle, Loader2, DollarSign, Package, UserCheck } from 'lucide-react';
@@ -43,6 +44,7 @@ export default function AgentDashboardPage() {
   const [noticeSettings, setNoticeSettings] = React.useState<NoticeBoardSettings | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [profileIsComplete, setProfileIsComplete] = React.useState(true);
+  const [completion, setCompletion] = React.useState<{score: number, missingFields: string[], isComplete: boolean} | null>(null);
   
   React.useEffect(() => {
     const fetchData = async () => {
@@ -58,11 +60,12 @@ export default function AgentDashboardPage() {
                     isAgentProfileComplete(currentAgent.uid),
                     getTierCommissions(),
                     getNoticeBoardSettings(),
+                    getProfileCompletion(currentAgent.uid),
                 ]);
 
                 const [
                     propsRes, resRes, dlsRes, rtsRes, itsRes, 
-                    featPropRes, isCompleteRes, commissionsRes, noticeRes
+                    featPropRes, isCompleteRes, commissionsRes, noticeRes, completionRes
                 ] = results;
 
                 if (propsRes.status === 'fulfilled') setAvailablePropertiesCount(propsRes.value.length);
@@ -79,6 +82,9 @@ export default function AgentDashboardPage() {
 
                 if (noticeRes.status === 'fulfilled') setNoticeSettings(noticeRes.value);
                 else console.error("Failed to fetch notice settings:", noticeRes.reason);
+
+                if (completionRes.status === 'fulfilled') setCompletion(completionRes.value);
+                else console.error("Failed to fetch profile completion:", completionRes.reason);
 
                 const res = resRes.status === 'fulfilled' ? resRes.value : [];
                 const dls = dlsRes.status === 'fulfilled' ? dlsRes.value : [];
@@ -161,19 +167,43 @@ export default function AgentDashboardPage() {
         </p>
       </div>
 
-       {!profileIsComplete && (
-        <Alert>
-            <UserCheck className="h-4 w-4" />
-            <AlertTitle className="font-semibold">Complete Your Profile</AlertTitle>
-            <AlertDescription className="flex items-center justify-between">
-                <p>Your profile is missing some required information. Please update it to ensure full access and functionality.</p>
-                <Link href="/app/agent/profile">
-                  <Button variant="outline">
-                    Update Profile <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-            </AlertDescription>
-        </Alert>
+       {completion && !completion.isComplete && (
+        <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <UserCheck className="h-5 w-5 text-primary" />
+                            Complete Your Profile
+                        </CardTitle>
+                        <CardDescription>
+                            Your profile is {completion.score}% complete. Complete your profile to help you get better rates, higher commission tiers, and exclusive agent resources.
+                        </CardDescription>
+                    </div>
+                    <Link href="/app/agent/profile">
+                        <Button size="sm">
+                            Complete Now <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </Link>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                    <Progress value={completion.score} className="h-2" />
+                    <div className="flex flex-wrap gap-2">
+                        <span className="text-xs font-medium text-muted-foreground mr-1">Missing:</span>
+                        {completion.missingFields.slice(0, 5).map((field, idx) => (
+                            <Badge key={idx} variant="outline" className="text-[10px] bg-background">
+                                {field}
+                            </Badge>
+                        ))}
+                        {completion.missingFields.length > 5 && (
+                            <span className="text-[10px] text-muted-foreground">+{completion.missingFields.length - 5} more</span>
+                        )}
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
       )}
 
        {currentAgent.status === 'pending' && (
