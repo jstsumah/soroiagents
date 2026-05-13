@@ -19,6 +19,10 @@ Welcome to the Tiered Access Hub, your centralized portal for all agent resource
     *   [Resource Management](#resource-management)
     *   [Support Chat Management](#support-chat-management)
     *   [System Settings](#system-settings)
+    *   [Properties Management](#properties-management)
+    *   [How To Get There](#how-to-get-there-management)
+    *   [Training Resources](#training-resources-management)
+    *   [Park Fees Management](#park-fees-management)
     *   [Billing & Audit Trail (Super Admin)](#billing--audit-trail-super-admin)
 
 ---
@@ -135,6 +139,37 @@ The "Settings" page allows Super Admins and Admins to customize the application.
 -   **Email Templates:** Customize the content of automated emails (e.g., User Activation, Password Reset).
 -   **Dashboard Cards:** Configure the site-wide "Notice Board" and "Promotion Card."
 -   **Integrations:** Add embed codes for third-party tools like the Resova Availability Chart.
+
+### Properties Management
+
+Accessible via the "Properties" link in the sidebar.
+
+- **Portfolio View:** View all properties in the portfolio with high-quality images and descriptions.
+- **Room Types & Facilities:** Manage detailed information for each property, including available room types, amenities, and guest activities.
+- **Interactive iBrochures:** Link properties to their Wetu iBrochure URLs for enhanced presentation.
+
+### How To Get There Management
+
+Accessible via the "How To Get There" link in the sidebar.
+
+- **Location Guides:** Manage travel logistics for different property locations.
+- **Transport Options:** Detail Flight, Train, and Road routing, including departing/arriving locations and estimated travel times.
+- **Map Integration:** Upload and display route maps for each destination.
+
+### Training Resources Management
+
+Accessible via the "Training" link in the sidebar.
+
+- **Learning Materials:** Upload training documents, webinars, and guides for agents.
+- **Categorization:** Organize training by category (e.g., General, Property Specific, Sales Tips).
+- **External Links:** Provide links to external webinars or training platforms.
+
+### Park Fees Management
+
+Accessible via the "Park Fees" link in the sidebar.
+
+- **Centralized Fee List:** Manage current park entrance fees for various locations.
+- **Detailed Breakdowns:** Store fee details for adults, children, and different user types (local/international).
 
 ### Billing & Audit Trail (Super Admin)
 

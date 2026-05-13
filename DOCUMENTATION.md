@@ -1,50 +1,61 @@
-# System Implementation Summary
+# Technical Documentation - Soroi Agents Portal v2.0
 
-This document provides a comprehensive summary of the features and functionalities recently implemented in the Tiered Access Hub application.
+## 1. Architecture Overview
 
-## 1. Core Feature: Unified Company Profiles & Data Integrity
+The application is built as a modern full-stack web application using **Next.js 15** and **Supabase**. It follows a service-oriented architecture for the backend logic, utilizing Next.js Server Actions for secure database communication.
 
-To improve data management and ensure consistency, we implemented a robust, centralized system for handling company information.
+### Core Components:
+- **Frontend**: React components styled with vanilla CSS, utilizing CSS variables for dynamic branding and theming.
+- **Backend**: Next.js Server Actions interacting with Supabase via the `supabase-js` client.
+- **Database**: PostgreSQL (Supabase) with Row Level Security (RLS) enforcing data privacy.
+- **AI Integration**: Google Genkit for support chat and metadata generation.
+- **Storage**: Supabase Storage for resources, company documents, and brand assets.
 
-- **Central `companies` Collection:** We introduced a new, dedicated collection in the database called `companies`. Each company now has a single, authoritative profile that stores all shared information, such as address, website, registration details, and legal documents.
+## 2. Database & Security (Supabase)
 
-- **Linked User Profiles:** Each user profile has been refactored to include a `companyId`, which links them to their corresponding company profile. This eliminates redundant data, ensures consistency, and simplifies management.
+### Row Level Security (RLS)
+Security is enforced at the database level. Each table has specific policies:
+- **Tiered Access**: Resources (Rates, Deals, etc.) are filtered by a custom PostgreSQL function `has_tiered_access()` which checks the user's `tier` against the resource's `tier_access` array.
+- **Admin Bypass**: Admins and Super Admins bypass tiered filters via the `is_admin()` function.
+- **User Privacy**: Users can only view and update their own profiles.
 
-- **Lazy Migration Strategy:** To handle all your existing user data without any disruption or manual work, we implemented a "lazy migration." The system automatically and safely transitions your old data to the new, structured format in the background as it's being used. This means you did not have to re-enter any company information.
+### Key Tables:
+- `profiles`: Extends `auth.users`, storing role, tier, and status.
+- `companies`: Centralized company profiles linked to users.
+- `resources/rates/exclusive_deals`: Tier-restricted content.
+- `audit_logs`: Immutable records of administrative actions.
+- `settings`: Key-value JSON store for system configuration.
 
--**Duplicate Prevention:** When an administrator creates or edits a user, the system now performs rigorous validation to prevent duplicate companies. It checks for uniqueness across several key fields:
-    - Company Name
-    - Company Phone Number
-    - Website URL
-    - VAT Number
-    - Company Registration No.
-    - TRA License No.
-If a match is found, the system prevents the creation of a duplicate and provides a clear notification.
+## 3. Service Layer
 
-- **Smart Company Joining:** The user creation process is now more intelligent. If an admin adds a user to a company that already exists, the system validates the new user's email domain against the domain of existing users in that company.
-    - If the domains match, the new user is automatically added to the existing company.
-    - If the domains do not match, the action is blocked to prevent incorrect associations, and an error message is displayed.
+Logic is encapsulated in `src/services/` to maintain clean separation from the UI:
+- `auth-service.ts`: Handles authentication state and authorization checks.
+- `user-service.ts`: Manages user profiles, approvals, and legacy login fallbacks.
+- `company-service.ts`: Handles company profile management and duplicate prevention.
+- `settings-service.ts`: Manages global configurations, themes, and branding.
+- `audit-log-service.ts`: Provides a secure way to record system activities.
 
-## 2. Streamlined Agent Resource Center
+## 4. AI & Chatbot
 
-To simplify the experience for your agents, we consolidated how they access all downloadable materials.
+The portal features a **Support Chatbot** powered by **Google Genkit**.
+- **Chat Sessions**: Managed in `chat_sessions` and `chat_messages` tables.
+- **Admin Integration**: Admins can view active sessions and join conversations to provide live support.
+- **AI Metadata**: When uploading resources, an AI tool analyzes file content/context to suggest optimal categorization and descriptions.
 
-- **Unified Resource Page:** The separate pages for "Rates," "Exclusive Deals," "Packaged Itineraries," and "Downloads" have all been merged into a single, comprehensive page located at `/app/agent/resources`.
+## 5. Branding & Theming
 
-- **Tab-Based Navigation:** On this unified page, agents can now easily filter resources using a clean, tab-based interface to switch between categories like Brochures, Images, Videos, Fact Sheets, and more.
+The application supports dynamic branding without code changes:
+- **CSS Variables**: Themes are applied via `--brand-primary`, `--brand-background`, etc.
+- **Settings Store**: Branding assets (logos, background images) and colors are stored in the `settings` table and applied globally via a root layout provider.
 
-- **Corrected Sidebar Navigation:** We fixed the main sidebar menu to ensure the "Downloads" link correctly directs users to the new, all-in-one resource center, providing a seamless and intuitive user journey.
+## 6. Deployment & Maintenance
 
-## 3. User Interface & Experience Refinements
+### Environment Variables Required:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `GOOGLE_GENAI_API_KEY`
+- `MAILERSEND_API_KEY` (for email services)
 
-We made several targeted improvements to the user interface to enhance clarity and provide a more professional user experience.
-
-- **Login & Sign-Up Pages:** The main titles on the login and sign-up pages were resized for a cleaner, more balanced look.
-
-- **Login Page Announcement:** The "Exciting Update" card on the login page was reformatted. The title is now more prominent, and the message is broken into distinct paragraphs for better readability.
-
-- **Popup Banner:** The description text within the site-wide popup banner was updated to correctly render separate paragraphs with proper spacing, making announcements clearer and more digestible for users.
-
-## 4. Administrative Functionality & Clarifications
-
-- **Password Management:** We clarified the password management process for administrators. An admin can set a temporary password when creating a new user. For existing users, an admin cannot directly change the password for security reasons but can trigger a secure "Password Reset" email, allowing the user to set their own new password.
+### Migrations:
+Database changes should be applied via the `supabase_schema.sql` script. It is designed to be idempotent for safe application on existing environments.
