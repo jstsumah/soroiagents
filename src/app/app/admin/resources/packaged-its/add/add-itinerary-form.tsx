@@ -25,6 +25,7 @@ import { useRouter } from "next/navigation";
 import { TIERS } from "@/lib/constants";
 import type { PackagedItinerary, UserType, ItineraryPackage, TravelLink } from "@/lib/types";
 import { addItinerary, updateItinerary } from "@/services/itinerary-service";
+import { deleteFile } from "@/services/storage-service";
 import * as React from 'react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { uploadFile } from "@/lib/upload-utils";
@@ -135,7 +136,14 @@ const ItineraryFormComponent = ({ itinerary }: ItineraryFormProps) => {
             if (link.type === 'file') {
               if (link.file?.[0]) {
                 const file = link.file[0] as File;
-                const path = `itineraries/${values.title.replace(/\s+/g, '-')}/package-${index}/${travelType}-${file.name}`;
+                const timestamp = Date.now();
+                const path = `itineraries/${values.title.replace(/\s+/g, '-')}/package-${index}/${travelType}-${timestamp}-${file.name}`;
+                
+                // If edit mode and old file exists, delete it
+                if (isEditMode && originalLink && originalLink.type === 'file' && originalLink.value) {
+                    await deleteFile(originalLink.value);
+                }
+
                 const url = await uploadFileAndGetURL(file, path);
                 return { type: 'file', value: url };
               }

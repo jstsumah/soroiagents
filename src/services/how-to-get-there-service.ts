@@ -128,6 +128,40 @@ export const deleteLocation = async (id: string): Promise<void> => {
     }
 };
 
+export const importLocations = async (locations: Partial<HowToGetThereLocation>[]): Promise<{ successCount: number; errors: string[] }> => {
+    const supabaseAdmin = getSupabaseAdmin();
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (const location of locations) {
+        try {
+            const dbData = mapLocationToDb(location);
+            const { error } = await supabaseAdmin
+                .from('how_to_get_there_locations')
+                .upsert(dbData, { onConflict: 'id' });
+
+            if (error) throw error;
+            successCount++;
+        } catch (e: any) {
+            errors.push(`Error importing "${location.name || 'Unknown'}": ${e.message}`);
+        }
+    }
+
+    try {
+        const user = await getAuthenticatedUser();
+        if (user) {
+            await logActivity({
+                userId: user.uid,
+                userName: user.name,
+                action: 'howToGetThere.import',
+                details: { count: successCount, errorCount: errors.length }
+            });
+        }
+    } catch (e) {}
+
+    return { successCount, errors };
+};
+
 const mapDbToLocation = (db: any): HowToGetThereLocation => ({
     id: db.id,
     name: db.name,

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { getItineraries, deleteItinerary } from "@/services/itinerary-service";
+import { getItineraries, deleteItinerary, importItineraries } from "@/services/itinerary-service";
 import { ItineraryCard } from "./itinerary-card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Loader2, Search, ArrowDown, ArrowUp } from "lucide-react";
@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/app/app-provider';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DataMigrationButtons } from "@/components/admin/data-migration-buttons";
 
 type UnifiedItinerary = (PackagedItinerary & { type: 'packaged' }) | (Resource & { type: 'single' });
 type SortKey = 'title' | 'uploaded_at';
@@ -153,22 +154,33 @@ export default function AdminItinerariesPage() {
             Add, edit, and manage both packaged and single itineraries.
           </p>
         </div>
-        {canEdit && (
-            <div className="flex gap-2">
-                <Link href="/app/admin/resources/packaged-its/add-single">
-                    <Button variant="outline">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Itinerary File
-                    </Button>
-                </Link>
-                <Link href="/app/admin/resources/packaged-its/add">
-                    <Button>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Packaged Itinerary
-                    </Button>
-                </Link>
-            </div>
-        )}
+        <div className="flex items-center gap-4">
+          <DataMigrationButtons 
+            data={itineraries.filter(it => it.type === 'packaged')} 
+            onImport={async (importedData) => {
+              const result = await importItineraries(importedData);
+              router.refresh(); // Or re-fetch
+              return result;
+            }} 
+            entityName="Itineraries" 
+          />
+          {canEdit && (
+              <div className="flex gap-2">
+                  <Link href="/app/admin/resources/packaged-its/add-single">
+                      <Button variant="outline">
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Add Itinerary File
+                      </Button>
+                  </Link>
+                  <Link href="/app/admin/resources/packaged-its/add">
+                      <Button>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Add Packaged Itinerary
+                      </Button>
+                  </Link>
+              </div>
+          )}
+        </div>
       </div>
 
         <div className="flex flex-col md:flex-row gap-4">

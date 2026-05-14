@@ -20,6 +20,7 @@ import { useAuth } from '../../app-provider';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { EmailTemplates } from './email-templates';
+import { StorageCleanupForm } from './storage-cleanup-form';
 
 export default function AdminSettingsPage() {
   const { user, isLoading } = useAuth();
@@ -153,6 +154,10 @@ export default function AdminSettingsPage() {
               <h4 className="text-lg font-medium mb-2">Flight Routes Image</h4>
               <p className='text-muted-foreground mb-4'>Upload a default image to be displayed on the &quot;How To Get There&quot; page.</p>
               <FlightRoutesImageForm />
+            </div>
+            <Separator />
+            <div>
+              <StorageCleanupForm />
             </div>
           </CardContent>
         </Card>

@@ -176,6 +176,38 @@ export const deleteRate = async (id: string): Promise<void> => {
     }
 };
 
+export const importRates = async (rates: Partial<Rate>[]): Promise<{ successCount: number; errors: string[] }> => {
+    const user = await ensureAdmin();
+    const supabaseAdmin = getSupabaseAdmin();
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (const rate of rates) {
+        try {
+            const dbData = mapRateToDb(rate);
+            const { error } = await supabaseAdmin
+                .from('rates')
+                .upsert(dbData, { onConflict: 'id' });
+
+            if (error) throw error;
+            successCount++;
+        } catch (e: any) {
+            errors.push(`Error importing "${rate.title || 'Unknown'}": ${e.message}`);
+        }
+    }
+
+    try {
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'rate.import',
+            details: { count: successCount, errorCount: errors.length }
+        });
+    } catch (e) {}
+
+    return { successCount, errors };
+};
+
 const mapDbToRate = (db: any): Rate => ({
     id: db.id,
     title: db.title,

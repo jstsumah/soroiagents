@@ -142,3 +142,34 @@ export const deleteParkFee = async (id: string): Promise<void> => {
         console.error('Could not log park fee deletion activity:', e);
     }
 };
+
+export const importParkFees = async (fees: Partial<ParkFee>[]): Promise<{ successCount: number; errors: string[] }> => {
+    const user = await ensureAdmin();
+    const supabaseAdmin = getSupabaseAdmin();
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (const fee of fees) {
+        try {
+            const { error } = await supabaseAdmin
+                .from('park_fees')
+                .upsert(fee, { onConflict: 'id' });
+
+            if (error) throw error;
+            successCount++;
+        } catch (e: any) {
+            errors.push(`Error importing fee for "${fee.location || 'Unknown'}": ${e.message}`);
+        }
+    }
+
+    try {
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'parkFee.import',
+            details: { count: successCount, errorCount: errors.length }
+        });
+    } catch (e) {}
+
+    return { successCount, errors };
+};

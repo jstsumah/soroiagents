@@ -83,9 +83,10 @@ export function AddDealForm() {
       const coverImageFile = values.coverImage[0] as File;
       const pdfFile = values.pdfFile[0] as File;
 
+      const timestamp = Date.now();
       const [imageUrl, fileUrl] = await Promise.all([
-        uploadFileAndGetURL(coverImageFile, `deals/${values.title.replace(/\s+/g, '-')}/cover.jpg`),
-        uploadFileAndGetURL(pdfFile, `deals/${values.title.replace(/\s+/g, '-')}/details.pdf`)
+        uploadFileAndGetURL(coverImageFile, `deals/${values.title.replace(/\s+/g, '-')}/${timestamp}-cover.jpg`),
+        uploadFileAndGetURL(pdfFile, `deals/${values.title.replace(/\s+/g, '-')}/${timestamp}-details.pdf`)
       ]);
 
       const dealData: Omit<ExclusiveDeal, 'id'> = {

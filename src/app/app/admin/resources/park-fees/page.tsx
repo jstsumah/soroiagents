@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { getParkFees } from "@/services/park-fee-service";
+import { getParkFees, deleteParkFee, importParkFees } from "@/services/park-fee-service";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PlusCircle, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -10,7 +10,7 @@ import { ParkFeeTable } from "./park-fee-table";
 import { Separator } from "@/components/ui/separator";
 import type { ParkFee } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { deleteParkFee } from "@/services/park-fee-service";
+import { DataMigrationButtons } from "@/components/admin/data-migration-buttons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -107,6 +107,15 @@ export default function ParkFeesPage() {
             Add, edit, and manage park fee information for different user types.
           </p>
         </div>
+        <DataMigrationButtons 
+          data={[...residentFees, ...nonResidentFees]} 
+          onImport={async (importedData) => {
+            const result = await importParkFees(importedData);
+            fetchFees();
+            return result;
+          }} 
+          entityName="Park Fees" 
+        />
       </div>
 
       <div className="flex flex-col gap-4">

@@ -9,8 +9,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
 import { HowToGetThereClient } from "./how-to-get-there-client";
 import type { HowToGetThereLocation } from '@/lib/types';
-import { getLocations, deleteLocation } from '@/services/how-to-get-there-service';
+import { getLocations, deleteLocation, importLocations } from '@/services/how-to-get-there-service';
 import { getCompanyDetails } from '@/services/settings-service';
+import { DataMigrationButtons } from "@/components/admin/data-migration-buttons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -120,12 +121,23 @@ export default function HowToGetTherePage() {
                 Add, edit, and manage location travel information.
             </p>
         </div>
-        <Link href="/app/admin/resources/how-to-get-there/add">
-            <Button>
-                <PlusCircle className="mr-2 h-[18px] w-[18px]" />
-                Add Location
-            </Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <DataMigrationButtons 
+            data={locations} 
+            onImport={async (importedData) => {
+              const result = await importLocations(importedData);
+              fetchData();
+              return result;
+            }} 
+            entityName="Locations" 
+          />
+          <Link href="/app/admin/resources/how-to-get-there/add">
+              <Button>
+                  <PlusCircle className="mr-2 h-[18px] w-[18px]" />
+                  Add Location
+              </Button>
+          </Link>
+        </div>
       </div>
       
       {isLoading ? (

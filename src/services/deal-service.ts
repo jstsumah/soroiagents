@@ -178,6 +178,38 @@ export const deleteDeal = async (id: string): Promise<void> => {
     }
 };
 
+export const importDeals = async (deals: Partial<ExclusiveDeal>[]): Promise<{ successCount: number; errors: string[] }> => {
+    const user = await ensureAdmin();
+    const supabaseAdmin = getSupabaseAdmin();
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (const deal of deals) {
+        try {
+            const dbData = mapDealToDb(deal);
+            const { error } = await supabaseAdmin
+                .from('exclusive_deals')
+                .upsert(dbData, { onConflict: 'id' });
+
+            if (error) throw error;
+            successCount++;
+        } catch (e: any) {
+            errors.push(`Error importing "${deal.title || 'Unknown'}": ${e.message}`);
+        }
+    }
+
+    try {
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'deal.import',
+            details: { count: successCount, errorCount: errors.length }
+        });
+    } catch (e) {}
+
+    return { successCount, errors };
+};
+
 export const getFeaturedDeal = async (): Promise<ExclusiveDeal | null> => {
     const user = await getAuthenticatedUser();
     if (!user) return null;

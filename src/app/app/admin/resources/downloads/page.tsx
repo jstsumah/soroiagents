@@ -2,9 +2,10 @@
 "use client";
 
 import * as React from 'react';
-import { getResources, deleteResource } from "@/services/resource-service";
+import { getResources, deleteResource, importResources } from "@/services/resource-service";
 import type { Resource, Category } from '@/lib/types';
 import { Loader2, PlusCircle, Search, ArrowDown, ArrowUp } from 'lucide-react';
+import { DataMigrationButtons } from "@/components/admin/data-migration-buttons";
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -175,14 +176,25 @@ export default function AdminDownloadsPage() {
               Upload and manage downloadable resources like brochures and images for your agents.
             </p>
         </div>
-        {canEdit && (
-          <Link href="/app/admin/resources/downloads/add">
-              <Button>
-                  <PlusCircle className="mr-2 h-[18px] w-[18px]" />
-                  Add New Resource
-              </Button>
-          </Link>
-        )}
+        <div className="flex items-center gap-4">
+          <DataMigrationButtons 
+            data={resources} 
+            onImport={async (importedData) => {
+              const result = await importResources(importedData);
+              fetchResources();
+              return result;
+            }} 
+            entityName="Resources" 
+          />
+          {canEdit && (
+            <Link href="/app/admin/resources/downloads/add">
+                <Button>
+                    <PlusCircle className="mr-2 h-[18px] w-[18px]" />
+                    Add New Resource
+                </Button>
+            </Link>
+          )}
+        </div>
       </div>
        <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">

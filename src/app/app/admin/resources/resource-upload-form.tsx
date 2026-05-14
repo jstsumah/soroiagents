@@ -137,8 +137,9 @@ export function ResourceUploadForm({ isItinerary = false }: ResourceUploadFormPr
       
       if (values.sourceType === 'upload') {
         const fileToUpload = values.file[0] as File;
+        const timestamp = Date.now();
         const basePath = `resources/${values.category}/${values.title.replace(/\s+/g, '-')}`;
-        fileUrl = await uploadFileAndGetURL(fileToUpload, `${basePath}/${fileToUpload.name}`);
+        fileUrl = await uploadFileAndGetURL(fileToUpload, `${basePath}/${timestamp}-${fileToUpload.name}`);
       } else {
         fileUrl = values.externalLink!;
       }
@@ -147,8 +148,9 @@ export function ResourceUploadForm({ isItinerary = false }: ResourceUploadFormPr
       let imageUrl: string | undefined = undefined;
       
       if (coverImageFile) {
+        const timestamp = Date.now();
         const basePath = `resources/${values.category}/${values.title.replace(/\s+/g, '-')}`;
-        imageUrl = await uploadFileAndGetURL(coverImageFile, `${basePath}/cover-${coverImageFile.name}`);
+        imageUrl = await uploadFileAndGetURL(coverImageFile, `${basePath}/cover-${timestamp}-${coverImageFile.name}`);
       } else if (values.category === 'images') {
         imageUrl = fileUrl; // For images, the file itself is the cover if none is provided.
       }

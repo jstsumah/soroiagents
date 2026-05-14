@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { getProperties, deleteProperty } from "@/services/property-service";
+import { getProperties, deleteProperty, importProperties } from "@/services/property-service";
 import { PropertyTable } from "./property-table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PlusCircle, Loader2 } from "lucide-react";
@@ -21,6 +21,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/app/app/app-provider';
 import { useRouter } from 'next/navigation';
+import { DataMigrationButtons } from "@/components/admin/data-migration-buttons";
 
 export default function AdminPropertiesPage() {
   const [properties, setProperties] = React.useState<Property[]>([]);
@@ -118,14 +119,26 @@ export default function AdminPropertiesPage() {
                 Manage your portfolio of hotels, lodges, and camps.
             </p>
         </div>
-        {canEdit && (
-            <Link href="/app/admin/properties/add">
-                <Button>
-                    <PlusCircle className="mr-2 h-[18px] w-[18px]" />
-                    Add Property
-                </Button>
-            </Link>
-        )}
+        <div className="flex items-center gap-4">
+          <DataMigrationButtons 
+            data={properties} 
+            onImport={async (importedData) => {
+              const result = await importProperties(importedData);
+              const props = await getProperties();
+              setProperties(props);
+              return result;
+            }} 
+            entityName="Properties" 
+          />
+          {canEdit && (
+              <Link href="/app/admin/properties/add">
+                  <Button>
+                      <PlusCircle className="mr-2 h-[18px] w-[18px]" />
+                      Add Property
+                  </Button>
+              </Link>
+          )}
+        </div>
       </div>
       
       <PropertyTable properties={properties} onDeleteRequest={setPropertyToDelete} />

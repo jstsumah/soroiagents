@@ -224,6 +224,38 @@ export const deleteItinerary = async (id: string): Promise<void> => {
     }
 };
 
+export const importItineraries = async (itineraries: Partial<PackagedItinerary>[]): Promise<{ successCount: number; errors: string[] }> => {
+    const user = await ensureAdmin();
+    const supabaseAdmin = getSupabaseAdmin();
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (const itinerary of itineraries) {
+        try {
+            const dbData = mapItineraryToDb(itinerary);
+            const { error } = await supabaseAdmin
+                .from('packaged_itineraries')
+                .upsert(dbData, { onConflict: 'id' });
+
+            if (error) throw error;
+            successCount++;
+        } catch (e: any) {
+            errors.push(`Error importing "${itinerary.title || 'Unknown'}": ${e.message}`);
+        }
+    }
+
+    try {
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'itinerary.import',
+            details: { count: successCount, errorCount: errors.length }
+        });
+    } catch (e) {}
+
+    return { successCount, errors };
+};
+
 const mapDbToItinerary = (db: any): PackagedItinerary => ({
     id: db.id,
     title: db.title,

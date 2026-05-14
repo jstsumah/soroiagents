@@ -185,6 +185,38 @@ export const deleteTrainingResource = async (id: string): Promise<void> => {
     }
 };
 
+export const importTrainingResources = async (resources: Partial<TrainingResource>[]): Promise<{ successCount: number; errors: string[] }> => {
+    const user = await ensureAdmin();
+    const supabaseAdmin = getSupabaseAdmin();
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (const res of resources) {
+        try {
+            const dbData = mapTrainingResourceToDb(res);
+            const { error } = await supabaseAdmin
+                .from('training_resources')
+                .upsert(dbData, { onConflict: 'id' });
+
+            if (error) throw error;
+            successCount++;
+        } catch (e: any) {
+            errors.push(`Error importing "${res.title || 'Unknown'}": ${e.message}`);
+        }
+    }
+
+    try {
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'training.import',
+            details: { count: successCount, errorCount: errors.length }
+        });
+    } catch (e) {}
+
+    return { successCount, errors };
+};
+
 const mapDbToTrainingResource = (db: any): TrainingResource => ({
     id: db.id,
     title: db.title,

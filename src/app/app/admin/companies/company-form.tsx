@@ -23,6 +23,7 @@ import { FileText, Download, Trash2, Loader2 } from "lucide-react";
 import type { Company, SignedContract, User } from "@/lib/types";
 import { uploadFile } from "@/lib/upload-utils";
 import { addCompany, updateCompany } from "@/services/company-service";
+import { deleteFile } from "@/services/storage-service";
 import { countries } from "@/lib/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/app/app/app-provider";
@@ -227,7 +228,8 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
         return;
     }
 
-    const filePath = `companies/${companyName}/documents/${file.name}`;
+    const timestamp = Date.now();
+    const filePath = `companies/${companyName}/documents/${timestamp}-${file.name}`;
     
     try {
       const url = await uploadFile(file, filePath);
@@ -377,7 +379,10 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
                             formName="company_reg_doc_file"
                             doc={companyRegDoc}
                             onFileChange={(file) => handleFileUpload(file, 'company_reg_doc')}
-                            onRemove={() => form.setValue('company_reg_doc', null)}
+                            onRemove={async () => {
+                              if (companyRegDoc?.url) await deleteFile(companyRegDoc.url);
+                              form.setValue('company_reg_doc', null);
+                            }}
                             control={form.control}
                         />
                     </div>
@@ -388,7 +393,10 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
                             formName="tra_license_doc_file"
                             doc={traLicenseDoc}
                             onFileChange={(file) => handleFileUpload(file, 'tra_license_doc')}
-                            onRemove={() => form.setValue('tra_license_doc', null)}
+                            onRemove={async () => {
+                              if (traLicenseDoc?.url) await deleteFile(traLicenseDoc.url);
+                              form.setValue('tra_license_doc', null);
+                            }}
                             control={form.control}
                         />
                     </div>
@@ -413,7 +421,10 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
                                         <p className="text-sm text-muted-foreground">Uploaded: {new Date((contract as any).uploaded_at).toLocaleDateString()}</p>
                                     </div>
                                 </div>
-                                <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)}><Trash2 className="mr-2 h-4 w-4"/>Remove</Button>
+                                <Button type="button" variant="destructive" size="sm" onClick={async () => {
+                                    if ((contract as any).url) await deleteFile((contract as any).url);
+                                    remove(index);
+                                }}><Trash2 className="mr-2 h-4 w-4"/>Remove</Button>
                             </li>
                         ))}
                     </ul>

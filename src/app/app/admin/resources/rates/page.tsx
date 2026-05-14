@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { getRates } from "@/services/rate-service";
+import { getRates, importRates } from "@/services/rate-service";
 import { AdminRateCard } from "./rate-card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Loader2, Search, ArrowDown, ArrowUp } from "lucide-react";
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/app/app/app-provider';
 import { useRouter } from 'next/navigation';
+import { DataMigrationButtons } from "@/components/admin/data-migration-buttons";
 
 type SortKey = 'title' | 'uploaded_at';
 type SortDirection = 'asc' | 'desc';
@@ -101,12 +102,24 @@ export default function AdminRatesPage() {
             Add, edit, and manage rate cards for your agents.
           </p>
         </div>
-        <Link href="/app/admin/resources/rates/add">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Rate
-          </Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <DataMigrationButtons 
+            data={rates} 
+            onImport={async (importedData) => {
+              const result = await importRates(importedData);
+              const fetchedRates = await getRates();
+              setRates(fetchedRates);
+              return result;
+            }} 
+            entityName="Rates" 
+          />
+          <Link href="/app/admin/resources/rates/add">
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Rate
+            </Button>
+          </Link>
+        </div>
       </div>
 
        <div className="flex flex-col md:flex-row gap-4">

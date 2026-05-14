@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { getDeals } from "@/services/deal-service";
+import { getDeals, importDeals } from "@/services/deal-service";
 import { AdminDealCard } from "./deal-card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Loader2, ArrowDown, ArrowUp, Search } from "lucide-react";
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/app/app/app-provider';
 import { useRouter } from 'next/navigation';
+import { DataMigrationButtons } from "@/components/admin/data-migration-buttons";
 
 type SortKey = 'title' | 'valid_until';
 type SortDirection = 'asc' | 'desc';
@@ -96,12 +97,23 @@ export default function AdminExclusiveDealsPage() {
             Add, edit, and manage special offers for your agents.
           </p>
         </div>
-        <Link href="/app/admin/resources/exclusive-deals/add">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Deal
-          </Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <DataMigrationButtons 
+            data={deals} 
+            onImport={async (importedData) => {
+              const result = await importDeals(importedData);
+              fetchDeals();
+              return result;
+            }} 
+            entityName="Deals" 
+          />
+          <Link href="/app/admin/resources/exclusive-deals/add">
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Deal
+            </Button>
+          </Link>
+        </div>
       </div>
 
        <div className="flex flex-col md:flex-row gap-4">

@@ -29,6 +29,7 @@ import { Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { addProperty, updateProperty } from "@/services/property-service";
 import { uploadFile } from "@/lib/upload-utils";
+import { deleteFile } from "@/services/storage-service";
 import type { Property } from "@/lib/types";
 import * as React from 'react';
 import Image from "next/image";
@@ -129,7 +130,11 @@ const AddPropertyFormComponent = ({ property }: AddPropertyFormProps) => {
     return uploadFile(file, path);
   };
   
-  const removeExistingImage = (index: number) => {
+  const removeExistingImage = async (index: number) => {
+    const imageUrl = existingImages[index];
+    if (imageUrl) {
+        await deleteFile(imageUrl);
+    }
     const updatedImages = existingImages.filter((_, i) => i !== index);
     form.setValue('existingImages', updatedImages);
   }
@@ -148,7 +153,11 @@ const AddPropertyFormComponent = ({ property }: AddPropertyFormProps) => {
       }
       
       const newImageUrls = await Promise.all(
-        imageFiles.map(file => uploadFileAndGetURL(file, `properties/${values.name.toLowerCase().replace(/\s+/g, '-')}/${file.name}`))
+        imageFiles.map(file => {
+            const timestamp = Date.now();
+            const path = `properties/${values.name.toLowerCase().replace(/\s+/g, '-')}/${timestamp}-${file.name}`;
+            return uploadFileAndGetURL(file, path);
+        })
       );
 
       const finalImageUrls = [...(values.existingImages || []), ...newImageUrls];

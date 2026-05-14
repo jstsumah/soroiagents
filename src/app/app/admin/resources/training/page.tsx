@@ -6,9 +6,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { TrainingResourceTable } from "./training-resource-table";
-import { getTrainingResources, deleteTrainingResource } from '@/services/training-resource-service';
+import { getTrainingResources, deleteTrainingResource, importTrainingResources } from '@/services/training-resource-service';
 import type { TrainingResource } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { DataMigrationButtons } from "@/components/admin/data-migration-buttons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -115,12 +116,23 @@ export default function AdminTrainingPage() {
             Add, edit, and manage training materials for your agents.
           </p>
         </div>
-        <Link href="/app/admin/resources/training/add">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Training Material
-          </Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <DataMigrationButtons 
+            data={resources} 
+            onImport={async (importedData) => {
+              const result = await importTrainingResources(importedData);
+              fetchResources();
+              return result;
+            }} 
+            entityName="Training" 
+          />
+          <Link href="/app/admin/resources/training/add">
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Training Material
+            </Button>
+          </Link>
+        </div>
       </div>
 
        {resources.length > 0 ? (

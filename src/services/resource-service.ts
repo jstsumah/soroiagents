@@ -173,6 +173,38 @@ export const deleteResource = async (id: string): Promise<void> => {
     }
 };
 
+export const importResources = async (resources: Partial<Resource>[]): Promise<{ successCount: number; errors: string[] }> => {
+    const user = await ensureAdmin();
+    const supabaseAdmin = getSupabaseAdmin();
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (const resource of resources) {
+        try {
+            const dbData = mapResourceToDb(resource);
+            const { error } = await supabaseAdmin
+                .from('resources')
+                .upsert(dbData, { onConflict: 'id' });
+
+            if (error) throw error;
+            successCount++;
+        } catch (e: any) {
+            errors.push(`Error importing "${resource.title || 'Unknown'}": ${e.message}`);
+        }
+    }
+
+    try {
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'resource.import',
+            details: { count: successCount, errorCount: errors.length }
+        });
+    } catch (e) {}
+
+    return { successCount, errors };
+};
+
 const mapDbToResource = (db: any): Resource => ({
     id: db.id,
     title: db.title,

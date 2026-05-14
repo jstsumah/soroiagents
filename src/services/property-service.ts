@@ -135,6 +135,38 @@ export const deleteProperty = async (id: string): Promise<void> => {
     }
 };
 
+export const importProperties = async (properties: Partial<Property>[]): Promise<{ successCount: number; errors: string[] }> => {
+    const user = await ensureAdmin();
+    const supabaseAdmin = getSupabaseAdmin();
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (const prop of properties) {
+        try {
+            const dbData = mapPropertyToDb(prop);
+            const { error } = await supabaseAdmin
+                .from('properties')
+                .upsert(dbData, { onConflict: 'id' });
+
+            if (error) throw error;
+            successCount++;
+        } catch (e: any) {
+            errors.push(`Error importing "${prop.name || 'Unknown'}": ${e.message}`);
+        }
+    }
+
+    try {
+        await logActivity({
+            userId: user.uid,
+            userName: user.name,
+            action: 'property.import',
+            details: { count: successCount, errorCount: errors.length }
+        });
+    } catch (e) {}
+
+    return { successCount, errors };
+};
+
 export const getFeaturedProperty = async (): Promise<Property | null> => {
   const user = await getAuthenticatedUser();
   if (!user) return null;

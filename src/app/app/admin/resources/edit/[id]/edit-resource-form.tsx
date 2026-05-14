@@ -31,6 +31,7 @@ import { TIERS, CATEGORIES } from "@/lib/constants";
 import type { Tier, Category, Resource } from "@/lib/types";
 import { uploadFile } from "@/lib/upload-utils";
 import { updateResource } from "@/services/resource-service";
+import { deleteFile } from "@/services/storage-service";
 import { useRouter } from "next/navigation";
 import * as React from 'react';
 import Image from "next/image";
@@ -84,7 +85,12 @@ const EditResourceFormComponent = ({ resource }: EditResourceFormProps) => {
 
       if (values.file && values.file.length > 0) {
         const fileToUpload = values.file[0] as File;
-        fileUrl = await uploadFileAndGetURL(fileToUpload, `${basePath}/${fileToUpload.name}`);
+        const timestamp = Date.now();
+        
+        // Delete old file if it exists
+        if (resource.file_url) await deleteFile(resource.file_url);
+        
+        fileUrl = await uploadFile(fileToUpload, `${basePath}/${timestamp}-${fileToUpload.name}`);
 
         // If it's an image resource and no separate cover image is uploaded, the main file is the image.
         if (values.category === 'images' && (!values.coverImage || values.coverImage.length === 0)) {
@@ -94,7 +100,14 @@ const EditResourceFormComponent = ({ resource }: EditResourceFormProps) => {
 
       if (values.coverImage && values.coverImage.length > 0) {
         const coverImageFile = values.coverImage[0] as File;
-        imageUrl = await uploadFileAndGetURL(coverImageFile, `${basePath}/cover-${coverImageFile.name}`);
+        const timestamp = Date.now();
+        
+        // Delete old cover image if it exists and is different from the main file
+        if (resource.imageUrl && resource.imageUrl !== resource.file_url) {
+            await deleteFile(resource.imageUrl);
+        }
+        
+        imageUrl = await uploadFileAndGetURL(coverImageFile, `${basePath}/cover-${timestamp}-${coverImageFile.name}`);
       }
 
       const resourceData: Partial<Resource> = {
