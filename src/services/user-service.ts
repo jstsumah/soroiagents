@@ -114,6 +114,18 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
         if (!authUser || (authUser.role !== 'Admin' && authUser.role !== 'Super Admin')) {
             throw new Error('Unauthorized: Only Admins and Super Admins can approve agents.');
         }
+
+        // Data Integrity Rule: Pending users must have complete profiles before activation
+        // Exception: Super Admin can bypass this.
+        const currentProfile = await getUserProfile(uid);
+        if (currentProfile && currentProfile.status === 'pending' && authUser.role !== 'Super Admin') {
+            const completion = await getProfileCompletion(uid);
+            if (!completion.isComplete) {
+                const missing = completion.missingFields.join(', ');
+                throw new Error(`Cannot activate user. The following fields are missing: ${missing}`);
+            }
+        }
+
         profileData.approved_by = authUser.uid;
         profileData.approved_at = new Date().toISOString();
     }

@@ -50,7 +50,7 @@ import { read, utils, writeFile } from 'xlsx';
 import { TIERS } from "@/lib/constants";
 import { TierBadge } from "@/components/ui/tier-badge";
 import { AdminSetPasswordDialog } from "@/components/auth/admin-set-password-dialog";
-import { getUser, updateUser, sendPasswordResetEmail, createUser, getUsers, sendActivationEmail, getUsersByCompanyId } from "@/services/user-service";
+import { getUser, updateUser, sendPasswordResetEmail, createUser, getUsers, sendActivationEmail, getUsersByCompanyId, getProfileCompletion } from "@/services/user-service";
 import { getCompanies, getCompany } from "@/services/company-service";
 import { deleteUser, adminSetUserPassword } from "@/services/admin-service";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -117,6 +117,7 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibility>({
     name: true,
     company: true,
+    completion: true,
     phone: true,
     tier: true,
     status: true,
@@ -767,6 +768,7 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
   const columnConfig = {
     name: { label: 'User', sortable: true },
     company: { label: 'Company', sortable: true },
+    completion: { label: 'Profile', sortable: false },
     dmc: { label: 'DMC', sortable: true },
     country: { label: 'Country', sortable: true },
     phone: { label: 'Phone', sortable: false },
@@ -1221,6 +1223,7 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
                 )}
               {columnVisibility.name && <SortableHeader tKey="name" label="User" />}
               {columnVisibility.company && <SortableHeader tKey="company" label="Company" />}
+              {columnVisibility.completion && <TableHead className="text-primary-foreground font-semibold">Profile</TableHead>}
               {columnVisibility.dmc && <SortableHeader tKey="dmc" label="DMC" />}
               {columnVisibility.country && <SortableHeader tKey="country" label="Country" />}
               {columnVisibility.phone && <TableHead className="text-primary-foreground font-semibold">Phone</TableHead>}
@@ -1258,23 +1261,27 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
                     <div className="text-sm text-muted-foreground">{user.email}</div>
                   </TableCell>}
                   {columnVisibility.company && (
+                    <TableCell className="font-medium">
+                      {user.company ? (
+                         <button 
+                           onClick={() => user.companyId && openCompanyDetails(user.companyId)}
+                           className="text-primary hover:underline text-left"
+                         >
+                           {user.company}
+                         </button>
+                      ) : (
+                        <span className="text-muted-foreground italic">No company linked</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {columnVisibility.completion && (
                     <TableCell>
-                        {user.companyId ? (
-                            <button 
-                                onClick={() => openCompanyDetails(user.companyId!)}
-                                className="text-primary hover:underline text-left font-medium"
-                                disabled={isFetchingCompany}
-                            >
-                                {user.company}
-                            </button>
-                        ) : (
-                            <span className="text-muted-foreground">{user.company || 'N/A'}</span>
-                        )}
+                       <UserCompletionCell uid={user.uid} />
                     </TableCell>
                   )}
                   {columnVisibility.dmc && <TableCell>{user.type === 'local' ? 'N/A' : user.dmc}</TableCell>}
                   {columnVisibility.country && <TableCell>{user.country}</TableCell>}
-                  {columnVisibility.phone && <TableCell>{user.phone}</TableCell>}
+                  {columnVisibility.phone && <TableCell>{user.phone || '—'}</TableCell>}
                   {columnVisibility.type && <TableCell className="capitalize">{user.type}</TableCell>}
                   {columnVisibility.tier && <TableCell>
                     <Select value={user.tier} onValueChange={(value) => attemptTierChange(user, value as Tier)} disabled={!isAdmin}>
@@ -1572,6 +1579,32 @@ function DetailRow({ label, value, isLink }: { label: string, value?: string | n
             ) : (
                 <span className="text-sm font-medium text-foreground">{value}</span>
             )}
+        </div>
+    );
+}
+
+function UserCompletionCell({ uid }: { uid: string }) {
+    const [completion, setCompletion] = React.useState<{ score: number; isComplete: boolean } | null>(null);
+
+    React.useEffect(() => {
+        let isMounted = true;
+        getProfileCompletion(uid).then(res => {
+            if (isMounted) setCompletion(res);
+        });
+        return () => { isMounted = false; };
+    }, [uid]);
+
+    if (!completion) return <div className="h-2 w-16 bg-muted animate-pulse rounded" />;
+
+    return (
+        <div className="flex items-center gap-2">
+            <Progress value={completion.score} className="h-1.5 w-12" />
+            <span className={cn(
+                "text-[10px] font-medium",
+                completion.isComplete ? "text-green-600" : "text-amber-600"
+            )}>
+                {completion.score}%
+            </span>
         </div>
     );
 }
