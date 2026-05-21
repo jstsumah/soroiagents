@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
-    tier TEXT DEFAULT 'Brass',
+    tier TEXT DEFAULT 'Rack Rates',
     status TEXT DEFAULT 'pending',
     role TEXT DEFAULT 'Agent',
     type TEXT DEFAULT 'international',

@@ -42,7 +42,7 @@ export const getDeals = async (): Promise<ExclusiveDeal[]> => {
         dealList = dealList.filter(deal => {
             const hasTierAccess = !deal.tier_access || 
                                  deal.tier_access.length === 0 || 
-                                 deal.tier_access.includes(user.tier || 'Brass') ||
+                                 deal.tier_access.includes(user.tier || 'Rack Rates') ||
                                  user.hasAllTierAccess;
             
             const hasTypeAccess = !deal.user_type_access || 
@@ -86,7 +86,7 @@ export const getDeal = async (id: string): Promise<ExclusiveDeal | null> => {
         if (!isUserAdmin) {
             const hasTierAccess = !deal.tier_access || 
                                  deal.tier_access.length === 0 || 
-                                 deal.tier_access.includes(user.tier || 'Brass') ||
+                                 deal.tier_access.includes(user.tier || 'Rack Rates') ||
                                  user.hasAllTierAccess;
             
             const hasTypeAccess = !deal.user_type_access || 

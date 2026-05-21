@@ -79,7 +79,7 @@ function AgentProfileForm({ agent }: { agent: User }) {
       payment_terms: agent.payment_terms || '',
       remarks: agent.remarks || '',
       type: agent.type || 'local',
-      tier: agent.tier || 'Brass',
+      tier: agent.tier || 'Rack Rates',
       status: agent.status || 'active',
       role: agent.role || 'Agent',
     },

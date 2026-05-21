@@ -44,7 +44,7 @@ export const getItineraries = async (): Promise<PackagedItinerary[]> => {
         itineraries = itineraries.filter(it => {
             const hasTierAccess = !it.tier_access || 
                                  it.tier_access.length === 0 || 
-                                 it.tier_access.includes(user.tier || 'Brass') ||
+                                 it.tier_access.includes(user.tier || 'Rack Rates') ||
                                  user.hasAllTierAccess;
             
             const hasTypeAccess = !it.user_type_access || 
@@ -81,7 +81,7 @@ export const getItinerary = async (id: string): Promise<PackagedItinerary | null
         if (!isUserAdmin) {
             const hasTierAccess = !itinerary.tier_access || 
                                  itinerary.tier_access.length === 0 || 
-                                 itinerary.tier_access.includes(user.tier || 'Brass') ||
+                                 itinerary.tier_access.includes(user.tier || 'Rack Rates') ||
                                  user.hasAllTierAccess;
             
             const hasTypeAccess = !itinerary.user_type_access || 

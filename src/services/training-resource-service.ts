@@ -43,7 +43,7 @@ export const getTrainingResources = async (): Promise<TrainingResource[]> => {
         resources = resources.filter(res => 
             !res.tier_access || 
             res.tier_access.length === 0 || 
-            res.tier_access.includes(user.tier || 'Brass') ||
+            res.tier_access.includes(user.tier || 'Rack Rates') ||
             user.hasAllTierAccess
         );
     }
@@ -74,7 +74,7 @@ export const getTrainingResource = async (id: string): Promise<TrainingResource 
         if (!isUserAdmin) {
             const hasAccess = !resource.tier_access || 
                               resource.tier_access.length === 0 || 
-                              resource.tier_access.includes(user.tier || 'Brass') ||
+                              resource.tier_access.includes(user.tier || 'Rack Rates') ||
                               user.hasAllTierAccess;
             if (!hasAccess) return null;
         }

@@ -29,7 +29,7 @@ export const getRates = async (): Promise<Rate[]> => {
         rates = rates.filter(rate => {
             const hasTierAccess = !rate.tier_access || 
                                  rate.tier_access.length === 0 || 
-                                 rate.tier_access.includes(user.tier || 'Brass') ||
+                                 rate.tier_access.includes(user.tier || 'Rack Rates') ||
                                  user.hasAllTierAccess;
             
             const hasTypeAccess = !rate.user_type_access || 
@@ -66,7 +66,7 @@ export const getRate = async (id: string): Promise<Rate | null> => {
         if (!isUserAdmin) {
             const hasTierAccess = !rate.tier_access || 
                                  rate.tier_access.length === 0 || 
-                                 rate.tier_access.includes(user.tier || 'Brass') ||
+                                 rate.tier_access.includes(user.tier || 'Rack Rates') ||
                                  user.hasAllTierAccess;
             
             const hasTypeAccess = !rate.user_type_access || 
