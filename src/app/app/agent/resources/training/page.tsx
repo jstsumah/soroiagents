@@ -11,6 +11,7 @@ import { useAuth } from "@/app/app/app-provider";
 import { getUser } from "@/services/user-service";
 import { getTrainingResources } from "@/services/training-resource-service";
 import { useToast } from "@/hooks/use-toast";
+import { logActivity } from "@/services/audit-log-service";
 
 export default function AgentTrainingPage() {
   const { user: currentAgent, isLoading: authLoading } = useAuth();
@@ -70,8 +71,23 @@ export default function AgentTrainingPage() {
     // Prefer external link, fall back to fileUrl. One must exist based on form validation.
     const href = resource.externalLink || resource.fileUrl || '#';
     
+    const handleView = async () => {
+      if (currentAgent) {
+        try {
+          await logActivity({
+            userId: currentAgent.uid,
+            userName: currentAgent.name,
+            action: 'training.view',
+            details: { resourceId: resource.id, resourceTitle: resource.title, category: resource.category }
+          });
+        } catch (err) {
+          console.error('Failed to log training resource view:', err);
+        }
+      }
+    };
+
     return (
-        <Link href={href} download={!resource.externalLink} target="_blank" rel="noopener noreferrer" className="group">
+        <Link href={href} download={!resource.externalLink} target="_blank" rel="noopener noreferrer" className="group" onClick={handleView}>
             <div className="flex items-center gap-4 py-3 border-b transition-colors group-hover:bg-muted/50 px-4 -mx-4 rounded-md">
                 <BookMarked className="h-6 w-6 text-primary group-hover:scale-110 transition-transform" />
                 <span className="text-lg font-medium text-foreground group-hover:text-primary transition-colors">{resource.title}</span>

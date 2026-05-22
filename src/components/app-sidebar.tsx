@@ -5,7 +5,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarTrigger } from "@/components/ui/sidebar";
-import { Home, Users, Folder, Settings, DollarSign, Tag, Package, Car, Info, Building, BookOpen, LayoutDashboard, CalendarCheck, FileDown, Phone, MessageSquare, History, CreditCard, ChevronDown, PanelLeftClose, PanelLeftOpen, AlertTriangle } from "lucide-react";
+import { Home, Users, Folder, Settings, DollarSign, Tag, Package, Car, Info, Building, BookOpen, LayoutDashboard, CalendarCheck, FileDown, Phone, MessageSquare, History, CreditCard, ChevronDown, PanelLeftClose, PanelLeftOpen, AlertTriangle, BarChart3 } from "lucide-react";
 import type { User } from '@/lib/types';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -62,6 +62,7 @@ const adminNavItems = (user: User) => [
       visible: true,
       subItems: resourceSubNav.map(item => ({...item, href: item.external ? item.href : `/app/admin/resources${item.href}`}))
     },
+    { href: '/app/admin/analytics', icon: BarChart3, label: 'Analytics', visible: user.role === 'Admin' || user.role === 'Super Admin' },
     { href: '/app/admin/billing', icon: CreditCard, label: 'Billing', visible: user.role === 'Super Admin' },
     { href: '/app/admin/audit-trail', icon: History, label: 'Audit Trail', visible: user.role === 'Super Admin' },
     { href: '/app/admin/settings', icon: Settings, label: 'Settings', visible: true },

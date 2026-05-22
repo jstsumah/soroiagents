@@ -8,6 +8,8 @@ import type { Resource } from "@/lib/types";
 import Image from "next/image";
 import Link from "next/link";
 import ReactMarkdown from 'react-markdown';
+import { useAuth } from "@/app/app/app-provider";
+import { logActivity } from "@/services/audit-log-service";
 
 const categoryIcons = {
   rates: <FileText className="h-full w-full" />,
@@ -25,7 +27,23 @@ const categoryIcons = {
 };
 
 export function ResourceCard({ resource }: { resource: Resource }) {
+  const { user: currentAgent } = useAuth();
   const icon = categoryIcons[resource.category];
+
+  const handleDownload = async () => {
+    if (currentAgent) {
+      try {
+        await logActivity({
+          userId: currentAgent.uid,
+          userName: currentAgent.name,
+          action: 'resource.download',
+          details: { resourceId: resource.id, resourceTitle: resource.title, category: resource.category }
+        });
+      } catch (err) {
+        console.error('Failed to log resource download:', err);
+      }
+    }
+  };
 
   return (
     <Card className="flex flex-col h-full overflow-hidden transition-shadow duration-300 hover:shadow-lg">
@@ -58,7 +76,7 @@ export function ResourceCard({ resource }: { resource: Resource }) {
       </CardContent>
       <CardFooter className="px-6 pb-6 pt-0">
         <Button asChild className="w-full">
-          <a href={resource.file_url} download target="_blank" rel="noopener noreferrer">
+          <a href={resource.file_url} download target="_blank" rel="noopener noreferrer" onClick={handleDownload}>
             <Download className="mr-2 h-[18px] w-[18px]" />
             Download
           </a>

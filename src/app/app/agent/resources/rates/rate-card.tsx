@@ -7,9 +7,27 @@ import { Download, Info, ImageIcon } from "lucide-react";
 import type { Rate } from "@/lib/types";
 import { Separator } from "@/components/ui/separator";
 import ReactMarkdown from 'react-markdown';
+import { useAuth } from "@/app/app/app-provider";
+import { logActivity } from "@/services/audit-log-service";
 
 export function AgentRateCard({ rate }: { rate: Rate }) {
+  const { user: currentAgent } = useAuth();
   const isRackRate = rate.title.toLowerCase().includes('rack');
+
+  const handleDownload = async () => {
+    if (currentAgent) {
+      try {
+        await logActivity({
+          userId: currentAgent.uid,
+          userName: currentAgent.name,
+          action: 'rate.download',
+          details: { rateId: rate.id, rateTitle: rate.title, userTier: currentAgent.tier }
+        });
+      } catch (err) {
+        console.error('Failed to log rate download:', err);
+      }
+    }
+  };
 
   return (
     <Card className="flex flex-col h-full overflow-hidden transition-shadow duration-300 hover:shadow-lg border-2 border-card">
@@ -28,8 +46,8 @@ export function AgentRateCard({ rate }: { rate: Rate }) {
             />
           ) : (
              <div className="flex h-full w-full items-center justify-center">
-                <ImageIcon className="h-16 w-16 text-muted-foreground/50" />
-            </div>
+                 <ImageIcon className="h-16 w-16 text-muted-foreground/50" />
+             </div>
           )}
         </div>
       </CardHeader>
@@ -42,6 +60,7 @@ export function AgentRateCard({ rate }: { rate: Rate }) {
             target="_blank"
             rel="noopener noreferrer"
             className="text-accent font-semibold hover:underline text-lg"
+            onClick={handleDownload}
           >
             Click to Download
           </a>
@@ -57,7 +76,7 @@ export function AgentRateCard({ rate }: { rate: Rate }) {
       </CardContent>
       {rate.fileUrl && (
         <CardFooter className="px-6 pb-6 pt-4 bg-muted/50">
-          <a href={rate.fileUrl} download className="w-full" target="_blank" rel="noopener noreferrer">
+          <a href={rate.fileUrl} download className="w-full" target="_blank" rel="noopener noreferrer" onClick={handleDownload}>
               <Button className="w-full">
                   <Download className="mr-2 h-4 w-4" />
                   Download PDF

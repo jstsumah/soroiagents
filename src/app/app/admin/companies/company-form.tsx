@@ -57,7 +57,7 @@ const getCompanyFormSchema = (isAdmin: boolean) => {
     postal_address: z.string().optional(),
     zip_code: z.string().optional(),
     vat_no: z.string().optional(),
-    company_reg: z.string().min(1, "Company registration number is required."),
+    company_reg: z.string().optional().or(z.literal('')),
     tra_license: z.string().optional(),
     new_contract_file: z.any().optional(),
     company_reg_doc_file: z.any().optional(),
@@ -124,9 +124,6 @@ function DocumentUploadField({
             <FormItem>
               <FormLabel className="flex items-center gap-1">
                 {label}
-                {formName === "company_reg_doc_file" && (
-                  <span className="text-destructive">*</span>
-                )}
               </FormLabel>
               <FormControl>
                 <Input
@@ -311,12 +308,27 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
 
 
   const onInvalidForm = (errors: any) => {
-    console.error('[CompanyForm] Validation errors prevented submit:', errors);
-    const firstError = Object.values(errors)[0] as any;
+    console.error('[CompanyForm] Validation errors prevented submit:', JSON.stringify(errors, null, 2));
+    
+    // Extract first error message by walking down the object
+    let firstErrorMsg = 'Some required fields are missing or invalid.';
+    const getFirstError = (obj: any): string | undefined => {
+      if (!obj || typeof obj !== 'object') return undefined;
+      if (obj.message && typeof obj.message === 'string') return obj.message;
+      for (const key of Object.keys(obj)) {
+        const msg = getFirstError(obj[key]);
+        if (msg) return msg;
+      }
+      return undefined;
+    };
+    
+    const msg = getFirstError(errors);
+    if (msg) firstErrorMsg = msg;
+
     toast({
       variant: 'destructive',
       title: 'Please fix the form errors',
-      description: firstError?.message || 'Some required fields are missing or invalid.',
+      description: firstErrorMsg,
     });
   };
 
@@ -373,7 +385,7 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
             <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
                     <div className="space-y-2">
-                        <FormField control={form.control} name="company_reg" render={({ field }: any) => (<FormItem><FormLabel>Company Registration No. <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="e.g., C12345" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="company_reg" render={({ field }: any) => (<FormItem><FormLabel>Company Registration No.</FormLabel><FormControl><Input placeholder="e.g., C12345" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <DocumentUploadField
                             label="Company Registration Document"
                             formName="company_reg_doc_file"
