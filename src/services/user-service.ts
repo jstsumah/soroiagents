@@ -318,7 +318,7 @@ export const createUser = async (data: CreateUserDto, patchIfExists: boolean = f
         company: data.company,
         companyId: finalCompanyId, // Use the looked-up ID
         type: data.type,
-        tier: data.tier,
+        tier: data.tier || 'Rack Rates',
         status: data.status,
         role: data.role,
         phone: data.phone,
