@@ -224,7 +224,12 @@ function AppContent({children}: {children: React.ReactNode}) {
         // This case handles public pages like login, signup, etc.
         // It prevents the main app layout from rendering.
         // `children` here would be the content of those public pages.
-        return <>{children}</>;
+        return (
+            <>
+                {children}
+                <SupportChatbot />
+            </>
+        );
     }
 
 

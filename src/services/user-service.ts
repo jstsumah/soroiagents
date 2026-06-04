@@ -109,15 +109,16 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
     // Handle approval logic & Security Check
     const authUser = await getAuthenticatedUser();
     
+    const currentProfile = await getUserProfile(uid);
+    
     // If attempting to change status to active (Approval)
-    if (data.status === 'active') {
+    if (data.status === 'active' && currentProfile?.status !== 'active') {
         if (!authUser || (authUser.role !== 'Admin' && authUser.role !== 'Super Admin')) {
             throw new Error('Unauthorized: Only Admins and Super Admins can approve agents.');
         }
 
         // Data Integrity Rule: Pending users must have complete profiles before activation
         // Exception: Super Admin can bypass this.
-        const currentProfile = await getUserProfile(uid);
         if (currentProfile && currentProfile.status === 'pending' && authUser.role !== 'Super Admin') {
             const completion = await getProfileCompletion(uid);
             if (!completion.isComplete) {

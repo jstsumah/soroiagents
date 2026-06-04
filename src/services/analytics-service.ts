@@ -148,6 +148,7 @@ export async function getAnalyticsData(startDate: string, endDate: string): Prom
   const tierMap: Record<string, number> = {};
   for (const p of allProfiles) {
     const t = p.tier ?? 'Unknown';
+    if (t.toLowerCase() === 'administrator') continue;
     tierMap[t] = (tierMap[t] ?? 0) + 1;
   }
   const tierDistribution: TierDistribution[] = Object.entries(tierMap)

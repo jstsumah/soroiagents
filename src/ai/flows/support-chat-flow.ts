@@ -51,7 +51,16 @@ const searchPropertiesTool = ai.defineTool(
       })
     ),
   },
-  async (input) => searchProperties(input.query)
+  async (input) => {
+    const results = await searchProperties(input.query);
+    return results.map(r => ({
+      id: r.id || '',
+      name: r.name || '',
+      location: r.location || '',
+      description: r.description || '',
+      total_rooms: r.total_rooms || 0,
+    }));
+  }
 );
 
 
@@ -64,7 +73,7 @@ const supportChatFlow = ai.defineFlow(
   async (input) => {
     const { sessionId, message } = input;
     
-    // 1. Get existing chat history from Firestore
+    // 1. Get existing chat history from Supabase
     const session = await getChatSession(sessionId);
     if (!session) {
       throw new Error(`Session with ID ${sessionId} not found.`);
@@ -78,8 +87,62 @@ const supportChatFlow = ai.defineFlow(
     };
     await addMessage(sessionId, userMessage);
     
-    // For now, we will disable the bot's response to let admins handle the chat.
-    // The user's message is saved, and the admin will see it in the support dashboard.
-    return { response: '' };
+    // 3. Fetch company details for context
+    const companyDetails = await getCompanyDetails();
+    
+    // 4. Construct the Genkit message history
+    const history = session.messages.map(msg => ({
+      role: msg.role === 'model' ? 'model' : 'user',
+      content: [{ text: msg.content }]
+    }));
+
+    history.push({
+      role: 'user',
+      content: [{ text: message }]
+    });
+
+    const systemPrompt = `You are the official support AI assistant for ${companyDetails.companyName || 'our company'}.
+You assist travel agents with using the portal, finding resources, and querying property information.
+Company Email: ${companyDetails.contactEmail || 'N/A'}
+Company Phone: ${companyDetails.contactPhone || 'N/A'}
+
+Instructions:
+- Be polite, professional, and concise.
+- Use the searchProperties tool if the user asks about specific camps, lodges, or properties to provide accurate information on location and room counts.
+- If you don't know the answer, tell the user an admin will follow up with them shortly.`;
+
+    try {
+      // 5. Generate AI response
+      const aiResponse = await ai.generate({
+        system: systemPrompt,
+        messages: history as any,
+        tools: [searchPropertiesTool],
+      });
+
+      const responseText = aiResponse.text;
+
+      // 6. Save bot's response to database
+      const botMessage: ChatMessage = {
+        role: 'model',
+        content: responseText,
+        author: {
+          name: "Support Bot",
+          uid: "support-bot-uid"
+        }
+      };
+      await addMessage(sessionId, botMessage);
+
+      return { response: responseText };
+    } catch (error) {
+      console.error("AI Generation Error:", error);
+      // Fallback message if AI fails or API key is invalid
+      const fallbackMessage = "I'm sorry, I'm having trouble thinking right now. An administrator will review your message and reply here soon.";
+      await addMessage(sessionId, {
+        role: 'model',
+        content: fallbackMessage,
+        author: { name: "Support Bot", uid: "support-bot-uid" }
+      });
+      return { response: fallbackMessage };
+    }
   }
 );

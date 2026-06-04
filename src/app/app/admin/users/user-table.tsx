@@ -285,8 +285,7 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
     console.log('[handleStatusChange] uid=', userToUpdate.uid, 'new status=', status, 'old status=', userToUpdate.status);
     const updatePayload: Partial<User> = { status };
     if (status === 'active' && userToUpdate.status !== 'active') {
-        updatePayload.approvedBy = viewingUser.name;
-        updatePayload.approvedAt = new Date();
+        // Backend handles approved_by and approved_at assignment
     }
 
     try {

@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,6 +22,7 @@ import { settingsEmitter } from './settings-emitter';
 
 export function SupportChatbot() {
     const { user } = useAuth();
+    const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
@@ -44,6 +46,17 @@ export function SupportChatbot() {
          const unsubscribe = settingsEmitter.subscribe(fetchCompanyDetails);
          return () => unsubscribe();
     }, [isOpen, fetchCompanyDetails]);
+
+    useEffect(() => {
+        // Auto-open logic (only once per session)
+        if (!sessionStorage.getItem('chatbot_auto_opened')) {
+            const timer = setTimeout(() => {
+                setIsOpen(true);
+                sessionStorage.setItem('chatbot_auto_opened', 'true');
+            }, 15000);
+            return () => clearTimeout(timer);
+        }
+    }, []);
 
 
     useEffect(() => {
@@ -72,14 +85,25 @@ export function SupportChatbot() {
         return () => clearInterval(intervalId);
     }, [isOpen, n8nChatbotUrl]);
 
-    const INITIAL_GREETING: ChatMessage = {
-        role: 'model',
-        content: "Hello! How can I assist you today? You can ask about our services or help with resources.",
-        author: {
-            name: "Support Bot",
-            uid: "support-bot-uid"
+    const INITIAL_GREETING: ChatMessage = React.useMemo(() => {
+        let content = "Hello! How can I assist you today? You can ask about our services or help with resources.";
+        if (pathname === '/signup') {
+            content = "Hi there! Do you need any help or have questions about registering as an agent?";
+        } else if (pathname.startsWith('/app/agent/training')) {
+            content = "Welcome to the training center! Need help finding anything?";
+        } else if (pathname.startsWith('/app/admin')) {
+            content = "Hello! Let me know if you need assistance with portal management.";
         }
-    };
+        
+        return {
+            role: 'model',
+            content,
+            author: {
+                name: "Support Bot",
+                uid: "support-bot-uid"
+            }
+        };
+    }, [pathname]);
 
     useEffect(() => {
         if (isOpen && messages.length === 0) {
@@ -109,9 +133,13 @@ export function SupportChatbot() {
 
 
     const handleSend = async () => {
-        if (input.trim() === '' || isLoading || !user) return;
+        if (input.trim() === '' || isLoading) return;
 
-        const userMessageContent = input.trim();
+        const isFirstMessage = messages.length <= 1;
+        const userMessageContent = isFirstMessage 
+            ? `[User is currently viewing: ${pathname}]\n\n${input.trim()}`
+            : input.trim();
+
         setInput('');
         setIsLoading(true);
         
@@ -120,7 +148,7 @@ export function SupportChatbot() {
             
             // Create session on-demand if it doesn't exist
             if (!currentSessionId) {
-                currentSessionId = await createChatSession(user.uid);
+                currentSessionId = await createChatSession(user?.uid || 'guest');
                 setSessionId(currentSessionId);
             }
 
@@ -189,7 +217,7 @@ export function SupportChatbot() {
                                         }
                                         <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${message.author?.uid === user?.uid ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                                             <p className="font-bold mb-1">{message.author?.name || (message.role === 'model' ? 'Support Bot' : 'User')}</p>
-                                            <p>{message.content}</p>
+                                            <p>{message.content.replace(/\[User is currently viewing: .*?\]\n\n/, '')}</p>
                                         </div>
                                         {message.author?.uid === user?.uid &&
                                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
