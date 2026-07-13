@@ -376,6 +376,12 @@ export const attemptLegacyLoginFallback = async (email: string, password: string
         return false;
     }
 
+    // Do not allow legacy fallback for users who are currently 'pending' approval.
+    // This prevents new signups from bypassing the admin approval process.
+    if (profile.status === 'pending') {
+        return false;
+    }
+
     try {
         // Find if they already have an Auth account
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(profile.id);
