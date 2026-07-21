@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Loader2, DatabaseBackup, RotateCcw, AlertTriangle, Download, Upload } from 'lucide-react';
+import { Loader2, DatabaseBackup, RotateCcw, AlertTriangle, Download, Upload, Archive, PackageOpen } from 'lucide-react';
 import { BACKUP_TABLES } from '@/services/backup-service';
 import type { BackupItem } from '@/services/backup-service';
 
@@ -37,6 +37,11 @@ export function BackupClient() {
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
   const [confirmText, setConfirmText] = useState('');
   
+  const [storageBackups, setStorageBackups] = useState<any[]>([]);
+  const [isGeneratingStorage, setIsGeneratingStorage] = useState(false);
+  const [isImportingStorage, setIsImportingStorage] = useState(false);
+  const storageFileInputRef = useRef<HTMLInputElement>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
@@ -45,9 +50,15 @@ export function BackupClient() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/backup/list');
-      if (!res.ok) throw new Error('Failed to fetch backups');
+      if (!res.ok) throw new Error('Failed to fetch DB backups');
       const data = await res.json();
       setBackups(data.backups || []);
+
+      const sRes = await fetch('/api/backup/storage/list');
+      if (sRes.ok) {
+         const sData = await sRes.json();
+         setStorageBackups(sData.backups || []);
+      }
     } catch (error: any) {
       toast({
         title: 'Error loading backups',
@@ -164,6 +175,68 @@ export function BackupClient() {
     window.location.href = `/api/backup/download?name=${encodeURIComponent(backupName)}`;
   };
 
+  const handleGenerateStorageBackup = async () => {
+    setIsGeneratingStorage(true);
+    try {
+      const res = await fetch('/api/backup/storage/generate', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to generate storage backup');
+      
+      toast({
+        title: 'Storage Backup Generated',
+        description: `Successfully packed ${data.filesCount} files.`,
+      });
+      fetchBackups();
+    } catch (error: any) {
+      toast({
+        title: 'Storage Backup Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingStorage(false);
+    }
+  };
+
+  const handleImportStorage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImportingStorage(true);
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('bucket', 'soroi');
+
+        const res = await fetch('/api/backup/storage/import', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to import storage backup');
+
+        toast({
+            title: 'Storage Imported',
+            description: `Successfully restored ${data.count} files.`,
+        });
+        
+        if (storageFileInputRef.current) storageFileInputRef.current.value = '';
+    } catch (error: any) {
+        toast({
+            title: 'Import Error',
+            description: error.message,
+            variant: 'destructive',
+        });
+    } finally {
+        setIsImportingStorage(false);
+    }
+  };
+
+  const handleStorageDownload = (backupName: string) => {
+    window.location.href = `/api/backup/storage/download?file=${encodeURIComponent(backupName)}`;
+  };
+
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -271,6 +344,89 @@ export function BackupClient() {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="pt-8">
+        <h2 className="text-lg font-semibold mb-4">Storage Bucket Backups (Images & Files)</h2>
+        <div className="flex justify-between items-center mb-4">
+            <div>
+            <input 
+                type="file" 
+                accept=".zip" 
+                ref={storageFileInputRef} 
+                className="hidden" 
+                onChange={handleImportStorage} 
+            />
+            <Button 
+                variant="outline" 
+                onClick={() => storageFileInputRef.current?.click()}
+                disabled={isImportingStorage || isLoading}
+            >
+                {isImportingStorage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageOpen className="mr-2 h-4 w-4" />}
+                {isImportingStorage ? 'Importing Storage...' : 'Import Storage ZIP'}
+            </Button>
+            </div>
+            <Button onClick={handleGenerateStorageBackup} disabled={isGeneratingStorage || isLoading}>
+            {isGeneratingStorage ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+                <Archive className="mr-2 h-4 w-4" />
+            )}
+            Generate Storage Backup
+            </Button>
+        </div>
+
+        <div className="rounded-md border bg-card">
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead>Archive Name</TableHead>
+                <TableHead>Date & Time</TableHead>
+                <TableHead>Size</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                    </TableCell>
+                </TableRow>
+                ) : storageBackups.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                    No storage backups generated yet.
+                    </TableCell>
+                </TableRow>
+                ) : (
+                storageBackups.map((backup) => (
+                    <TableRow key={backup.name}>
+                    <TableCell className="font-medium">
+                        {backup.name}
+                    </TableCell>
+                    <TableCell>
+                        {new Date(backup.created_at).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                        {formatBytes(backup.metadata?.size || 0)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <Button 
+                            variant="secondary" 
+                            size="sm"
+                            onClick={() => handleStorageDownload(backup.name)}
+                            title="Download ZIP Archive"
+                        >
+                            <Download className="h-4 w-4 mr-2" /> Download
+                        </Button>
+                    </TableCell>
+                    </TableRow>
+                ))
+                )}
+            </TableBody>
+            </Table>
+        </div>
       </div>
 
       <Dialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
