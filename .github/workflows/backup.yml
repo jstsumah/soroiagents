@@ -1,0 +1,27 @@
+name: Daily System Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Run at 02:00 UTC daily
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  run-backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Backup API
+        run: |
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            echo "Error: APP_URL secret is not set."
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.BACKUP_CRON_SECRET }}" ]; then
+            echo "Error: BACKUP_CRON_SECRET secret is not set."
+            exit 1
+          fi
+          
+          curl -X POST "${{ secrets.APP_URL }}/api/backup/run" \
+            -H "Authorization: Bearer ${{ secrets.BACKUP_CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body

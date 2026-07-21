@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     bodySizeLimit: '20mb',
   },
   experimental: {
+    instrumentationHook: true,
     webpackBuildWorker: false,
     parallelServerCompiles: false,
     parallelServerBuildTraces: false,

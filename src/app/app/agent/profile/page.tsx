@@ -121,8 +121,18 @@ function AgentProfileForm({ agent }: { agent: User }) {
     toast({
       variant: "destructive",
       title: "Check Your Details",
-      description: `Please correct the following: ${errorList}`,
+      description: <div className="whitespace-pre-line">{`Please correct the following:\n${errorList}`}</div>,
     });
+
+    // Auto-scroll to the first field with an error
+    const firstError = Object.keys(errors)[0];
+    if (firstError) {
+        const errorElement = document.querySelector(`[name="${firstError}"]`);
+        if (errorElement) {
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            (errorElement as HTMLElement).focus();
+        }
+    }
   };
 
   return (

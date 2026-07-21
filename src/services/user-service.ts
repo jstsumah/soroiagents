@@ -278,6 +278,8 @@ export const createUser = async (data: CreateUserDto, patchIfExists: boolean = f
     }
 
     // Handle "User already registered" error
+    let customToastMessage: string | undefined;
+
     if (authError && (authError.message.includes('already been registered') || authError.message.includes('already registered'))) {
         const existingUser = await getUserByEmail(data.email);
         if (existingUser) {
@@ -303,7 +305,18 @@ export const createUser = async (data: CreateUserDto, patchIfExists: boolean = f
             }
             return { uid: existingUser.uid, toastMessage: "User already exists.", alreadyExists: true };
         }
-        throw authError;
+        
+        // User exists in auth but NOT in profiles
+        // We use generateLink to fetch the auth user's ID without sending an email
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({ type: 'magiclink', email: data.email });
+        if (linkError || !linkData?.user) {
+            throw new Error("User exists in auth but we could not fetch their ID to fix their profile.");
+        }
+        
+        // Proceed to upsert the profile using the fetched uid
+        authData = { user: linkData.user };
+        authError = null;
+        customToastMessage = "User existed in authentication but was missing a profile. Profile has been created.";
     }
 
     if (authError) throw authError;
@@ -312,15 +325,26 @@ export const createUser = async (data: CreateUserDto, patchIfExists: boolean = f
     const uid = authData.user.id;
 
     // 2. Update Profile
+    // SECURITY PATCH: Force defaults for non-admins to prevent privilege escalation via raw API requests
+    let finalRole = data.role;
+    let finalTier = data.tier || 'Rack Rates';
+    let finalStatus = data.status;
+
+    if (!isAdmin) {
+        finalRole = 'Agent';
+        finalTier = 'Rack Rates';
+        finalStatus = 'pending';
+    }
+
     const profileUpdate = mapUserToProfile({
         name: data.name,
         email: data.email,
         company: data.company,
         companyId: finalCompanyId, // Use the looked-up ID
         type: data.type,
-        tier: data.tier || 'Rack Rates',
-        status: data.status,
-        role: data.role,
+        tier: finalTier,
+        status: finalStatus,
+        role: finalRole,
         phone: data.phone,
         country: data.country,
         dmc: data.dmc,
@@ -332,8 +356,7 @@ export const createUser = async (data: CreateUserDto, patchIfExists: boolean = f
 
     const { error: profileError } = await supabaseAdmin
         .from('profiles')
-        .update(profileUpdate)
-        .eq('id', uid);
+        .upsert({ id: uid, ...profileUpdate });
 
     if (profileError) console.error('Error updating profile:', profileError);
 
@@ -349,7 +372,7 @@ export const createUser = async (data: CreateUserDto, patchIfExists: boolean = f
         }
     } catch (e) {}
 
-    return { uid, toastMessage: "User created successfully" };
+    return { uid, toastMessage: customToastMessage || "User created successfully" };
 };
 
 /**
