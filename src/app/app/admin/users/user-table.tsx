@@ -291,6 +291,7 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
     try {
       console.log('[handleStatusChange] updatePayload=', updatePayload);
       const result = await updateUser(userToUpdate.uid, updatePayload);
+      if (result.error) throw new Error(result.error);
       console.log('[handleStatusChange] result=', result);
       // Refetch all users to get the updated approvedBy field
       const updatedUsers = await getUsers();
@@ -321,7 +322,8 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
 
   const handleTierChange = async (uid: string, tier: Tier) => {
     try {
-      await updateUser(uid, { tier });
+      const result = await updateUser(uid, { tier });
+      if (result.error) throw new Error(result.error);
       setUsers(users.map(user => user.uid === uid ? { ...user, tier } : user));
       toast({
         title: "Tier Updated",
@@ -343,7 +345,11 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
     const updatePayload: Partial<User> = { [field]: value };
      // Note: approved_by/approved_at are set automatically by updateUser when status === 'active'
 
-    const updatePromises = selectedUsers.map(uid => updateUser(uid, updatePayload));
+    const updatePromises = selectedUsers.map(async uid => {
+        const result = await updateUser(uid, updatePayload);
+        if (result.error) throw new Error(result.error);
+        return result;
+    });
     try {
         await Promise.all(updatePromises);
         // Refetch all users to get updated approvedBy fields if status was changed
@@ -432,7 +438,8 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
 
     setIsSettingPassword(true);
     try {
-        await adminSetUserPassword(userForPasswordSet.uid, newPassword);
+        const result = await adminSetUserPassword(userForPasswordSet.uid, newPassword);
+        if (result && result.error) throw new Error(result.error);
         toast({
             title: "Password Updated",
             description: `Successfully set a new password for ${userForPasswordSet.name}. They will be required to change it on their next login.`,
@@ -455,7 +462,11 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
   const handleDeleteUsers = async () => {
     if (usersToDelete.length === 0) return;
 
-    const deletionPromises = usersToDelete.map(user => deleteUser(user.uid));
+    const deletionPromises = usersToDelete.map(async user => {
+        const result = await deleteUser(user.uid);
+        if (result && result.error) throw new Error(result.error);
+        return result;
+    });
     
     try {
       await Promise.all(deletionPromises);
@@ -472,7 +483,7 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
        toast({
         variant: "destructive",
         title: "Delete Failed",
-        description: "Could not delete some or all of the selected users.",
+        description: error instanceof Error ? error.message : "An error occurred while deleting users.",
       });
     } finally {
         setUsersToDelete([]);
@@ -567,6 +578,8 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
                     country: getColumnValue(row, 'country') || '',
                     passwordResetRequired: true,
                 }, true); // Pass true for patchIfExists
+                
+                if (result && result.error) throw new Error(result.error);
 
                 if (result.updated) {
                     updatedCount++;

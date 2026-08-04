@@ -164,7 +164,7 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                             name="name"
                             render={({ field }: any) => (
                                 <FormItem>
-                                <FormLabel>Full Name</FormLabel>
+                                <FormLabel>Full Name <span className="text-destructive">*</span></FormLabel>
                                 <FormControl><Input placeholder="e.g., John Doe" {...field} onChange={(e) => field.onChange(toTitleCase(e.target.value))} /></FormControl>
                                 <FormMessage />
                                 </FormItem>
@@ -175,7 +175,7 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                             name="email"
                             render={({ field }: any) => (
                                 <FormItem>
-                                <FormLabel>Email Address</FormLabel>
+                                <FormLabel>Email Address <span className="text-destructive">*</span></FormLabel>
                                 <FormControl><Input 
                                     type="email" 
                                     placeholder="e.g., john.doe@example.com" 
@@ -202,14 +202,14 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                                 </FormItem>
                             )}
                         />
-                         <FormField control={form.control} name="country" render={({ field }: any) => (<FormItem><FormLabel>Country</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a country" /></SelectTrigger></FormControl><SelectContent>{countries.map(country => (<SelectItem key={country} value={country}>{country}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                         <FormField control={form.control} name="country" render={({ field }: any) => (<FormItem><FormLabel>Country <span className="text-destructive">*</span></FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a country" /></SelectTrigger></FormControl><SelectContent>{countries.map(country => (<SelectItem key={country} value={country}>{country}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
                         {!isEditMode && (
                             <FormField
                                 control={form.control}
                                 name="password"
                                 render={({ field }: any) => (
                                     <FormItem>
-                                    <FormLabel>Password</FormLabel>
+                                    <FormLabel>Password <span className="text-destructive">*</span></FormLabel>
                                     <FormControl><PasswordInput placeholder="••••••••" {...field} /></FormControl>
                                     <FormDescription>A temporary password for the new user.</FormDescription>
                                     <FormMessage />
@@ -261,7 +261,7 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                             name="companyId"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                <FormLabel>Company</FormLabel>
+                                <FormLabel>Company <span className="text-destructive">*</span></FormLabel>
                                 <Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}>
                                     <PopoverTrigger asChild>
                                     <FormControl>
@@ -386,7 +386,7 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <FormField control={form.control} name="type" render={({ field }: any) => (
                                 <FormItem>
-                                    <FormLabel>Agent Type</FormLabel>
+                                    <FormLabel>Agent Type <span className="text-destructive">*</span></FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                                         <SelectContent>
@@ -399,7 +399,7 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                             )} />
                             <FormField control={form.control} name="tier" render={({ field }: any) => (
                                 <FormItem>
-                                    <FormLabel>Access Tier</FormLabel>
+                                    <FormLabel>Access Tier <span className="text-destructive">*</span></FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Select tier" /></SelectTrigger></FormControl>
                                         <SelectContent>
@@ -411,7 +411,7 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                             )} />
                             <FormField control={form.control} name="status" render={({ field }: any) => (
                                 <FormItem>
-                                    <FormLabel>Status</FormLabel>
+                                    <FormLabel>Status <span className="text-destructive">*</span></FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
                                         <SelectContent>
@@ -426,7 +426,7 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                             {viewingUser?.role === 'Super Admin' ? (
                                 <FormField control={form.control} name="role" render={({ field }: any) => (
                                     <FormItem>
-                                        <FormLabel>User Role</FormLabel>
+                                        <FormLabel>User Role <span className="text-destructive">*</span></FormLabel>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <FormControl><SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger></FormControl>
                                             <SelectContent>

@@ -122,7 +122,7 @@ export function SignUpForm() {
   async function onFullSubmit(values: z.infer<typeof fullFormSchema>) {
     setIsLoading(true);
     try {
-      const { toastMessage } = await createUser({
+      const result = await createUser({
         email: values.email,
         password: values.password,
         name: values.name,
@@ -132,6 +132,8 @@ export function SignUpForm() {
         country: values.country,
         dmc: values.dmc,
       });
+      if (result && result.error) throw new Error(result.error);
+      const { toastMessage } = result;
 
       await sendAdminNewUserEmail({
           name: values.name,
@@ -186,7 +188,7 @@ export function SignUpForm() {
                     name="name"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel>Full Name <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                             <Input placeholder="John Doe" {...field} onChange={(e) => field.onChange(toTitleCase(e.target.value))} />
                         </FormControl>
@@ -199,7 +201,7 @@ export function SignUpForm() {
                     name="email"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                             <Input placeholder="name@example.com" {...field} onChange={(e) => field.onChange(e.target.value.replace(/\s/g, '').toLowerCase())} />
                         </FormControl>
@@ -221,7 +223,7 @@ export function SignUpForm() {
                     name="company"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Company Name</FormLabel>
+                        <FormLabel>Company Name <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                             <Input placeholder="Safari Ventures Inc." {...field} onChange={(e) => field.onChange(toTitleCase(e.target.value))} />
                         </FormControl>
@@ -234,7 +236,7 @@ export function SignUpForm() {
                     name="phone"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Phone</FormLabel>
+                        <FormLabel>Phone <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                             <Input placeholder="+254712345678" {...field} />
                         </FormControl>
@@ -247,7 +249,7 @@ export function SignUpForm() {
                     name="country"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Country</FormLabel>
+                        <FormLabel>Country <span className="text-destructive">*</span></FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                                 <SelectTrigger>
@@ -278,7 +280,7 @@ export function SignUpForm() {
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                 <FormField control={form.control} name="type" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Agent Type</FormLabel>
+                        <FormLabel>Agent Type <span className="text-destructive">*</span></FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                             <SelectContent>
@@ -296,7 +298,7 @@ export function SignUpForm() {
                         name="dmc"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>DMC Name</FormLabel>
+                            <FormLabel>DMC Name <span className="text-destructive">*</span></FormLabel>
                             <FormControl>
                                 <Input placeholder="DMC Ltd" {...field} />
                             </FormControl>
@@ -311,7 +313,7 @@ export function SignUpForm() {
                     name="password"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Set Password</FormLabel>
+                        <FormLabel>Set Password <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                             <PasswordInput placeholder="••••••••" {...field} />
                         </FormControl>

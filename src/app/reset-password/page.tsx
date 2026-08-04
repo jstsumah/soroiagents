@@ -151,7 +151,7 @@ export default function ResetPasswordPage() {
                     name="password"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>New Password</FormLabel>
+                        <FormLabel>New Password <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                         <PasswordInput 
                             placeholder="••••••••" 
@@ -168,7 +168,7 @@ export default function ResetPasswordPage() {
                     name="confirmPassword"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
+                        <FormLabel>Confirm Password <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                         <PasswordInput 
                             placeholder="••••••••" 

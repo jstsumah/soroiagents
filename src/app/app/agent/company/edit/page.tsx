@@ -20,19 +20,24 @@ const AgentCompanyForm = ({ user, company: initialCompany }: { user: User, compa
         try {
             if (initialCompany) {
                 // Editing existing company
-                await updateCompany(initialCompany.id, companyData);
+                const updateCompanyResult = await updateCompany(initialCompany.id, companyData);
+                if (updateCompanyResult && updateCompanyResult.error) throw new Error(updateCompanyResult.error);
                 toast({ title: "Company Updated", description: "Your company details have been saved." });
             } else {
                 // Creating new company
-                const newCompanyId = await addCompany(companyData);
-                await updateUser(user.uid, { companyId: newCompanyId, company: companyData.name });
+                const addResult = await addCompany(companyData);
+                if (addResult && addResult.error) throw new Error(addResult.error);
+                const newCompanyId = addResult.id;
+                
+                const updateUserResult = await updateUser(user.uid, { companyId: newCompanyId, company: companyData.name });
+                if (updateUserResult && updateUserResult.error) throw new Error(updateUserResult.error);
                 toast({ title: "Company Created", description: "Your company has been created and linked to your profile." });
             }
             router.push('/app/agent/profile');
             router.refresh();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to save company:", error);
-            toast({ variant: "destructive", title: "Save Failed", description: "An error occurred while saving company details." });
+            toast({ variant: "destructive", title: "Save Failed", description: error.message || "An error occurred while saving company details." });
         }
     };
     

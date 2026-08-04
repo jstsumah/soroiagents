@@ -5,20 +5,20 @@ import { getAuthenticatedUser } from './auth-service';
 import type { User, Payment } from '@/lib/types';
 import { logActivity } from './audit-log-service';
 
-export const adminSetUserPassword = async (targetUid: string, newPassword: string): Promise<void> => {
+export const adminSetUserPassword = async (targetUid: string, newPassword: string): Promise<{success: boolean, error?: string}> => {
     const supabaseAdmin = getSupabaseAdmin();
     const caller = await getAuthenticatedUser();
     
     if (!caller) {
-        throw new Error('The function must be called while authenticated.');
+        return { success: false, error: 'The function must be called while authenticated.' };
     }
 
     if (!targetUid || !newPassword) {
-        throw new Error('The function must be called with "targetUid" and "newPassword" arguments.');
+        return { success: false, error: 'The function must be called with "targetUid" and "newPassword" arguments.' };
     }
 
     if (newPassword.length < 8) {
-        throw new Error('The new password must be at least 8 characters long.');
+        return { success: false, error: 'The new password must be at least 8 characters long.' };
     }
 
     // Check caller role
@@ -29,11 +29,11 @@ export const adminSetUserPassword = async (targetUid: string, newPassword: strin
         .single();
 
     if (callerError || !callerData) {
-        throw new Error('Caller user profile does not exist.');
+        return { success: false, error: 'Caller user profile does not exist.' };
     }
 
     if (callerData.role !== 'Admin' && callerData.role !== 'Super Admin') {
-        throw new Error('Only Admins and Super Admins can set user passwords.');
+        return { success: false, error: 'Only Admins and Super Admins can set user passwords.' };
     }
 
     // Check target user
@@ -44,15 +44,15 @@ export const adminSetUserPassword = async (targetUid: string, newPassword: strin
         .single();
 
     if (targetError || !targetUserData) {
-        throw new Error('Target user profile does not exist in the database.');
+        return { success: false, error: 'Target user profile does not exist in the database.' };
     }
 
     // Permissions check
     if (callerData.role === 'Admin' && targetUserData.role === 'Super Admin') {
-        throw new Error('An Admin cannot change a Super Admin\'s password.');
+        return { success: false, error: 'An Admin cannot change a Super Admin\'s password.' };
     }
     if (callerData.role === 'Super Admin' && targetUserData.role === 'Super Admin' && caller.uid !== targetUid) {
-        throw new Error('A Super Admin cannot change another Super Admin\'s password.');
+        return { success: false, error: 'A Super Admin cannot change another Super Admin\'s password.' };
     }
 
     try {
@@ -75,26 +75,28 @@ export const adminSetUserPassword = async (targetUid: string, newPassword: strin
             action: 'auth.admin_set_password',
             details: { targetUid, targetName: targetUserData.name || 'N/A' }
         });
+        
+        return { success: true };
     } catch (error: any) {
         console.error('Error setting user password:', error);
-        throw new Error(error.message || 'An internal error occurred while setting the user password.');
+        return { success: false, error: error.message || 'An internal error occurred while setting the user password.' };
     }
 };
 
-export const deleteUser = async (uid: string): Promise<void> => {
+export const deleteUser = async (uid: string): Promise<{success: boolean, error?: string}> => {
     const supabaseAdmin = getSupabaseAdmin();
     const caller = await getAuthenticatedUser();
     
     if (!caller) {
-        throw new Error('The function must be called while authenticated.');
+        return { success: false, error: 'The function must be called while authenticated.' };
     }
 
     if (!uid) {
-        throw new Error('The function must be called with a "uid" argument.');
+        return { success: false, error: 'The function must be called with a "uid" argument.' };
     }
 
     if (caller.uid === uid) {
-        throw new Error('You cannot delete your own account.');
+        return { success: false, error: 'You cannot delete your own account.' };
     }
 
     const { data: callerData } = await supabaseAdmin
@@ -104,7 +106,7 @@ export const deleteUser = async (uid: string): Promise<void> => {
         .single();
 
     if (callerData?.role !== 'Super Admin' && callerData?.role !== 'Admin') {
-        throw new Error('Only Admins and Super Admins can delete users.');
+        return { success: false, error: 'Only Admins and Super Admins can delete users.' };
     }
 
     const { data: targetData } = await supabaseAdmin
@@ -114,11 +116,11 @@ export const deleteUser = async (uid: string): Promise<void> => {
         .single();
 
     if (targetData?.role === 'Super Admin') {
-        throw new Error('A Super Admin cannot be deleted.');
+        return { success: false, error: 'A Super Admin cannot be deleted.' };
     }
 
     if (callerData?.role === 'Admin' && targetData?.role === 'Admin') {
-        throw new Error('An Admin cannot delete another Admin.');
+        return { success: false, error: 'An Admin cannot delete another Admin.' };
     }
 
     try {
@@ -143,22 +145,24 @@ export const deleteUser = async (uid: string): Promise<void> => {
             action: 'user.delete',
             details: { deletedUserId: uid, deletedUserName: userData?.name, deletedUserEmail: userData?.email }
         });
+        
+        return { success: true };
     } catch (error: any) {
         console.error('Error deleting user:', error);
-        throw new Error(error.message || 'An internal error occurred while deleting the user.');
+        return { success: false, error: error.message || 'An internal error occurred while deleting the user.' };
     }
 };
 
-export const updateUserPassword = async (newPassword: string): Promise<void> => {
+export const updateUserPassword = async (newPassword: string): Promise<{success: boolean, error?: string}> => {
     const supabaseAdmin = getSupabaseAdmin();
     const caller = await getAuthenticatedUser();
     
     if (!caller) {
-        throw new Error('The function must be called while authenticated.');
+        return { success: false, error: 'The function must be called while authenticated.' };
     }
 
     if (!newPassword || newPassword.length < 8) {
-        throw new Error('A valid password (min 8 chars) is required.');
+        return { success: false, error: 'A valid password (min 8 chars) is required.' };
     }
 
     try {
@@ -185,9 +189,11 @@ export const updateUserPassword = async (newPassword: string): Promise<void> => 
             action: 'auth.force_password_change',
             details: { reason: 'Initial login' }
         });
+        
+        return { success: true };
     } catch (error: any) {
         console.error('Error updating password:', error);
-        throw new Error(error.message || 'Could not update password.');
+        return { success: false, error: error.message || 'Could not update password.' };
     }
 };
 
@@ -196,7 +202,7 @@ export const extendSubscription = async (): Promise<any> => {
     const caller = await getAuthenticatedUser();
     
     if (!caller) {
-        throw new Error('The function must be called while authenticated.');
+        return { success: false, error: 'The function must be called while authenticated.' };
     }
 
     try {
@@ -251,6 +257,6 @@ export const extendSubscription = async (): Promise<any> => {
         return { success: true, newRenewalDate: newRenewalDateISO };
     } catch(error: any) {
         console.error("Error extending subscription:", error);
-        throw new Error(error.message || 'Failed to extend subscription.');
+        return { success: false, error: error.message || 'Failed to extend subscription.' };
     }
 };

@@ -66,7 +66,8 @@ export function ForcePasswordChangeDialog({ isOpen, onPasswordChanged }: ForcePa
     }
     setIsLoading(true);
     try {
-      await updateUserPassword(values.newPassword);
+      const result = await updateUserPassword(values.newPassword);
+      if (result && result.error) throw new Error(result.error);
       // Explicitly set the flag to false after a successful password change.
       await updateUser(user.uid, { passwordResetRequired: false });
       
@@ -128,7 +129,7 @@ export function ForcePasswordChangeDialog({ isOpen, onPasswordChanged }: ForcePa
                     name="newPassword"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>New Password</FormLabel>
+                        <FormLabel>New Password <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                             <PasswordInput placeholder="••••••••" {...field} />
                         </FormControl>
@@ -141,7 +142,7 @@ export function ForcePasswordChangeDialog({ isOpen, onPasswordChanged }: ForcePa
                     name="confirmPassword"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Confirm New Password</FormLabel>
+                        <FormLabel>Confirm New Password <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                             <PasswordInput placeholder="••••••••" {...field} />
                         </FormControl>

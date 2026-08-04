@@ -219,7 +219,7 @@ export const getCompany = async (id: string): Promise<Company | null> => {
     return data ? mapDbToCompany(data) : null;
 };
 
-export const addCompany = async (data: Omit<Company, 'id'>): Promise<string> => {
+export const addCompany = async (data: Omit<Company, 'id'>): Promise<{success: boolean, id?: string, error?: string}> => {
     // Normalize before duplicate check
     const normalizedData = { ...data };
     if (normalizedData.website_url) {
@@ -228,7 +228,7 @@ export const addCompany = async (data: Omit<Company, 'id'>): Promise<string> => 
 
     const duplicateCheck = await isDuplicateCompany(normalizedData);
     if (duplicateCheck) {
-        throw new Error(`This company already exists (duplicate ${duplicateCheck.field.replace('_', ' ')}: "${duplicateCheck.value}"). Please contact support to be linked to this company.`);
+        return { success: false, error: `This company already exists (duplicate ${duplicateCheck.field.replace('_', ' ')}: "${duplicateCheck.value}"). Please contact support to be linked to this company.` };
     }
 
     const dbData = mapCompanyToDb(data);
@@ -239,7 +239,10 @@ export const addCompany = async (data: Omit<Company, 'id'>): Promise<string> => 
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) {
+        console.error('[addCompany] DB error:', error);
+        return { success: false, error: error.message };
+    }
 
     try {
         const user = await getAuthenticatedUser();
@@ -255,13 +258,13 @@ export const addCompany = async (data: Omit<Company, 'id'>): Promise<string> => 
         console.error("Audit log failed for company creation:", e);
     }
 
-    return insertedData.id;
+    return { success: true, id: insertedData.id };
 };
 
-export const updateCompany = async (id: string, data: Partial<Omit<Company, 'id'>>): Promise<void> => {
+export const updateCompany = async (id: string, data: Partial<Omit<Company, 'id'>>): Promise<{success: boolean, error?: string}> => {
     console.log('[updateCompany] called for id=', id);
     const current = await getCompany(id);
-    if (!current) throw new Error("Company not found");
+    if (!current) return { success: false, error: "Company not found" };
 
     // Only check duplicates for fields that are actually changing
     // This is crucial because the database has pre-existing duplicates that shouldn't block unrelated updates.
@@ -296,7 +299,7 @@ export const updateCompany = async (id: string, data: Partial<Omit<Company, 'id'
     if (Object.keys(changedFields).length > 0) {
         const duplicateCheck = await isDuplicateCompany(changedFields, id);
         if (duplicateCheck) {
-            throw new Error(`Another company with the same ${duplicateCheck.field.replace('_', ' ')} already exists: "${duplicateCheck.value}".`);
+            return { success: false, error: `Another company with the same ${duplicateCheck.field.replace('_', ' ')} already exists: "${duplicateCheck.value}".` };
         }
     }
 
@@ -310,7 +313,7 @@ export const updateCompany = async (id: string, data: Partial<Omit<Company, 'id'
 
     if (error) {
         console.error('[updateCompany] DB error:', error);
-        throw error;
+        return { success: false, error: error.message };
     }
     console.log('[updateCompany] DB update success for id=', id);
 
@@ -327,6 +330,8 @@ export const updateCompany = async (id: string, data: Partial<Omit<Company, 'id'
     } catch(e) {
         console.error("Audit log failed for company update:", e);
     }
+    
+    return { success: true };
 };
 
 

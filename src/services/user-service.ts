@@ -102,7 +102,7 @@ export const getUsersByCompanyId = async (companyId: string): Promise<User[]> =>
     return allData.map(mapProfileToUser);
 };
 
-export const updateUser = async (uid: string, data: Partial<User>): Promise<{success: boolean, toastMessage?: string}> => {
+export const updateUser = async (uid: string, data: Partial<User>): Promise<{success: boolean, toastMessage?: string, error?: string}> => {
     const profileData = mapUserToProfile(data);
     console.log('[updateUser] uid=', uid, 'data=', data, 'profileData=', profileData);
 
@@ -114,7 +114,7 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
     // If attempting to change status to active (Approval)
     if (data.status === 'active' && currentProfile?.status !== 'active') {
         if (!authUser || (authUser.role !== 'Admin' && authUser.role !== 'Super Admin')) {
-            throw new Error('Unauthorized: Only Admins and Super Admins can approve agents.');
+            return { success: false, error: 'Unauthorized: Only Admins and Super Admins can approve agents.' };
         }
 
         // Data Integrity Rule: Pending users must have complete profiles before activation
@@ -123,7 +123,7 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
             const completion = await getProfileCompletion(uid);
             if (!completion.isComplete) {
                 const missing = completion.missingFields.join(', ');
-                throw new Error(`Cannot activate user. The following fields are missing: ${missing}`);
+                return { success: false, error: `Cannot activate user. The following fields are missing: ${missing}` };
             }
         }
 
@@ -134,7 +134,7 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
     // General security: Only admins can change Tier or Role
     if (data.tier || data.role) {
         if (!authUser || (authUser.role !== 'Admin' && authUser.role !== 'Super Admin')) {
-             throw new Error('Unauthorized: Only Admins can modify User Tiers or Roles.');
+             return { success: false, error: 'Unauthorized: Only Admins can modify User Tiers or Roles.' };
         }
     }
 
@@ -146,7 +146,7 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
 
     if (error) {
         console.error('Error updating user:', uid, error);
-        throw error;
+        return { success: false, error: error.message };
     }
 
     console.log('[updateUser] Success. uid=', uid, 'profileData=', profileData);
@@ -169,8 +169,8 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
     return { success: true };
 };
 
-export const createUser = async (data: CreateUserDto, patchIfExists: boolean = false) => {
-    if (!data.password) throw new Error("Password is required");
+export const createUser = async (data: CreateUserDto, patchIfExists: boolean = false): Promise<{ uid?: string, toastMessage?: string, alreadyExists?: boolean, updated?: boolean, error?: string }> => {
+    if (!data.password) return { error: "Password is required" };
 
     const supabase = await createClient();
     const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -310,7 +310,7 @@ export const createUser = async (data: CreateUserDto, patchIfExists: boolean = f
         // We use generateLink to fetch the auth user's ID without sending an email
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({ type: 'magiclink', email: data.email });
         if (linkError || !linkData?.user) {
-            throw new Error("User exists in auth but we could not fetch their ID to fix their profile.");
+            return { error: "User exists in auth but we could not fetch their ID to fix their profile." };
         }
         
         // Proceed to upsert the profile using the fetched uid
@@ -319,8 +319,8 @@ export const createUser = async (data: CreateUserDto, patchIfExists: boolean = f
         customToastMessage = "User existed in authentication but was missing a profile. Profile has been created.";
     }
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error("Failed to create auth user");
+    if (authError) return { error: authError.message || "Failed to create auth user" };
+    if (!authData.user) return { error: "Failed to create auth user" };
 
     const uid = authData.user.id;
 

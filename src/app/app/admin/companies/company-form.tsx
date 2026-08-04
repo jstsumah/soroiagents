@@ -274,13 +274,17 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
         delete (dataToSave as any).tra_license_doc_file;
 
         if (isEditMode && company) {
-            await updateCompany(company.id, dataToSave);
+            const updateResult = await updateCompany(company.id, dataToSave);
+            if (updateResult && updateResult.error) throw new Error(updateResult.error);
             toast({ title: "Company Updated", description: "Company details have been saved." });
         } else {
-            const newCompanyId = await addCompany(dataToSave);
+            const addResult = await addCompany(dataToSave);
+            if (addResult && addResult.error) throw new Error(addResult.error);
+            const newCompanyId = addResult.id;
             // If an agent is creating their own company, link them to it.
             if(user?.role === 'Agent') {
-                await updateUser(user.uid, { companyId: newCompanyId, company: dataToSave.name });
+                const updateResult = await updateUser(user.uid, { companyId: newCompanyId, company: dataToSave.name });
+                if (updateResult && updateResult.error) throw new Error(updateResult.error);
             }
             toast({ title: "Company Created", description: "The new company has been added." });
         }
@@ -354,7 +358,7 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
                         name="website_url" 
                         render={({ field }: any) => (
                             <FormItem>
-                                <FormLabel>Website URL</FormLabel>
+                                <FormLabel>Website URL <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="website.com" 
@@ -385,7 +389,7 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
             <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
                     <div className="space-y-2">
-                        <FormField control={form.control} name="company_reg" render={({ field }: any) => (<FormItem><FormLabel>Company Registration No.</FormLabel><FormControl><Input placeholder="e.g., C12345" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="company_reg" render={({ field }: any) => (<FormItem><FormLabel>Company Registration No. <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="e.g., C12345" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <DocumentUploadField
                             label="Company Registration Document"
                             formName="company_reg_doc_file"

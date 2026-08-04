@@ -71,7 +71,8 @@ export function CompanyProfileClient({ company }: { company: Company }) {
   
   const handleAddUser = async (userToAdd: User) => {
       try {
-          await updateUser(userToAdd.uid, { companyId: company.id, company: company.name });
+          const updateResult = await updateUser(userToAdd.uid, { companyId: company.id, company: company.name });
+          if (updateResult && updateResult.error) throw new Error(updateResult.error);
           toast({ title: 'User Added', description: `${userToAdd.name} has been added to ${company.name}.` });
           fetchUsers(); // Refresh both lists
       } catch (error) {
@@ -82,7 +83,8 @@ export function CompanyProfileClient({ company }: { company: Company }) {
   const handleRemoveUser = async () => {
       if (!userToRemove) return;
       try {
-          await updateUser(userToRemove.uid, { companyId: null, company: null });
+          const updateResult = await updateUser(userToRemove.uid, { companyId: null, company: null });
+          if (updateResult && updateResult.error) throw new Error(updateResult.error);
           toast({ title: 'User Removed', description: `${userToRemove.name} has been removed from ${company.name}.` });
           fetchUsers(); // Refresh both lists
       } catch (error) {

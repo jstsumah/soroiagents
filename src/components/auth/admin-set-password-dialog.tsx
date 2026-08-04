@@ -36,7 +36,8 @@ export function AdminSetPasswordDialog({ user, trigger }: AdminSetPasswordDialog
 
     setIsLoading(true);
     try {
-      await adminSetUserPassword(user.uid, newPassword);
+      const result = await adminSetUserPassword(user.uid, newPassword);
+      if (result && result.error) throw new Error(result.error);
       toast({
         title: "Password Updated",
         description: `Successfully set a new password for ${user.name}. They will be required to change it on their next login.`,

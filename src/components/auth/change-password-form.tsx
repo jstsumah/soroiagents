@@ -45,7 +45,8 @@ export function ChangePasswordForm() {
   async function onSubmit(values: z.infer<typeof passwordSchema>) {
     setIsLoading(true);
     try {
-      await updateUserPassword(values.password);
+      const result = await updateUserPassword(values.password);
+      if (result && result.error) throw new Error(result.error);
       toast({
         title: "Password Updated",
         description: "Your password has been successfully changed.",
@@ -81,7 +82,7 @@ export function ChangePasswordForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Password</FormLabel>
+                  <FormLabel>New Password <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <PasswordInput
                       placeholder="••••••••"
@@ -97,7 +98,7 @@ export function ChangePasswordForm() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormLabel>Confirm New Password <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <PasswordInput
                       placeholder="••••••••"

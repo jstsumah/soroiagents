@@ -173,7 +173,7 @@ export function LoginForm() {
                     render={({ field }) => (
                         <FormItem>
                         <div className="flex items-center justify-between">
-                            <FormLabel>Password</FormLabel>
+                            <FormLabel>Password <span className="text-destructive">*</span></FormLabel>
                             <Link
                             href="/forgot-password"
                             className="text-sm font-medium text-primary hover:underline"
@@ -210,7 +210,7 @@ export function LoginForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Email <span className="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input 
                     placeholder="name@example.com" 

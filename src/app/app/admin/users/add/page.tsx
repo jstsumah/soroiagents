@@ -85,11 +85,13 @@ export default function AddUserPage() {
             setIsLoading(false);
             return;
         }
-        const { toastMessage } = await createUser({
+        const result = await createUser({
             email: values.email,
             password: values.password,
             ...values
         });
+        if (result && result.error) throw new Error(result.error);
+        const { toastMessage } = result;
         toast({ title: "User Created!", description: toastMessage || `The account for ${values.name} has been created.` });
         router.push('/app/admin/users');
         router.refresh();

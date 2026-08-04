@@ -149,7 +149,8 @@ export default function EditUserPage({ params }: { params: { uid: string } }) {
                 return;
             }
 
-            await updateUser(user.uid, payload);
+            const result = await updateUser(user.uid, payload);
+            if (result && result.error) throw new Error(result.error);
             toast({ title: "User Updated!", description: `The account for ${values.name} has been saved.` });
             if (viewingUser?.role === 'Admin' || viewingUser?.role === 'Super Admin') {
                 router.push('/app/admin/users');

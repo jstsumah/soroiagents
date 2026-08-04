@@ -78,7 +78,7 @@ export function ForgotPasswordForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Email <span className="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input 
                     placeholder="name@example.com" 
