@@ -560,8 +560,35 @@ BEGIN
         CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'soroi');
     END IF;
     
-    -- Authenticated Upload (Managed via Service Role in app, but policy added for completeness)
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated Upload' AND tablename = 'objects' AND schemaname = 'storage') THEN
         CREATE POLICY "Authenticated Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'soroi' AND auth.role() = 'authenticated');
     END IF;
 END $$;
+
+-- ==========================================
+-- Additional Constraints (Added later for Data Integrity)
+-- ==========================================
+
+-- Companies: Unique phone (when not empty)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companies_phone_unique
+    ON companies (phone)
+    WHERE phone IS NOT NULL AND phone != '';
+
+-- Companies: Unique website_url (when not empty)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companies_website_url_unique
+    ON companies (website_url)
+    WHERE website_url IS NOT NULL AND website_url != '';
+
+-- Companies: Unique case-insensitive name
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companies_name_unique_ci
+    ON companies (lower(name));
+
+-- Companies: Unique company_reg (when not empty)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companies_company_reg_unique
+    ON companies (company_reg)
+    WHERE company_reg IS NOT NULL AND company_reg != '';
+
+-- Companies: Unique vat_no (when not empty)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companies_vat_no_unique
+    ON companies (vat_no)
+    WHERE vat_no IS NOT NULL AND vat_no != '';

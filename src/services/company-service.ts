@@ -143,10 +143,23 @@ export const importCompanies = async (
 };
 
 const isDuplicateCompany = async (company: Partial<Company>, excludeId?: string): Promise<{ isDuplicate: boolean; field: string; value: string } | null> => {
-    const uniqueFields: (keyof Company)[] = ['name', 'phone', 'website_url', 'vat_no', 'company_reg', 'tra_license'];
     const supabase = await createClient();
     
-    for (const field of uniqueFields) {
+    // Check name with case-insensitive match (ilike) to catch "Andbeyond" vs "ANDBEYOND"
+    if (company.name && typeof company.name === 'string' && company.name.trim().length > 0) {
+        const nameVal = company.name.trim();
+        let nameQuery = supabase
+            .from('companies')
+            .select('id')
+            .ilike('name', nameVal); // Case-insensitive exact match
+        if (excludeId) nameQuery = nameQuery.neq('id', excludeId);
+        const { data: nameMatch } = await nameQuery.maybeSingle();
+        if (nameMatch) return { isDuplicate: true, field: 'name', value: nameVal };
+    }
+
+    // Check other unique identifiers with exact match (they are structured data)
+    const exactFields: (keyof Company)[] = ['phone', 'website_url', 'vat_no', 'company_reg', 'tra_license'];
+    for (const field of exactFields) {
         let value = company[field];
         if (value && typeof value === 'string') {
             value = value.trim();
@@ -166,7 +179,7 @@ const isDuplicateCompany = async (company: Partial<Company>, excludeId?: string)
                 query = query.neq('id', excludeId);
             }
             
-            const { data, error } = await query.maybeSingle();
+            const { data } = await query.maybeSingle();
             if (data) {
                  return { isDuplicate: true, field, value };
             }
@@ -174,6 +187,49 @@ const isDuplicateCompany = async (company: Partial<Company>, excludeId?: string)
     }
     return null;
 }
+
+/**
+ * Searches for companies with a similar name to the provided query.
+ * Used by the UI to warn admins/agents about potential duplicates before
+ * they finish filling out a new company form.
+ */
+export const getSimilarCompanies = async (query: string): Promise<Pick<Company, 'id' | 'name' | 'phone' | 'website_url' | 'city' | 'country'>[]> => {
+    if (!query || query.trim().length < 3) return [];
+    const supabaseAdmin = getSupabaseAdmin();
+    const term = query.trim();
+
+    // Strategy: find companies where the name contains the query OR the query contains part of the company name.
+    // We run two searches and merge unique results.
+    const { data: containsResults } = await supabaseAdmin
+        .from('companies')
+        .select('id, name, phone, website_url, city, country')
+        .ilike('name', `%${term}%`)
+        .limit(5);
+
+    // Also search by significant words (length > 3) to catch partial matches
+    const significantWords = term.split(/\s+/).filter(w => w.length > 3);
+    let wordResults: any[] = [];
+    for (const word of significantWords.slice(0, 2)) { // limit to first 2 words for perf
+        const { data } = await supabaseAdmin
+            .from('companies')
+            .select('id, name, phone, website_url, city, country')
+            .ilike('name', `%${word}%`)
+            .limit(5);
+        if (data) wordResults = [...wordResults, ...data];
+    }
+
+    // Merge, deduplicate by id
+    const all = [...(containsResults || []), ...wordResults];
+    const seen = new Set<string>();
+    const unique = all.filter(c => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+    });
+
+    return unique.slice(0, 5).map(mapDbToCompany) as any;
+};
+
 
 export const getCompanies = async (): Promise<Company[]> => {
     const supabaseAdmin = getSupabaseAdmin();

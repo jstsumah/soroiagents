@@ -19,10 +19,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import * as React from "react";
-import { FileText, Download, Trash2, Loader2 } from "lucide-react";
+import { FileText, Download, Trash2, Loader2, AlertTriangle, Building2 } from "lucide-react";
 import type { Company, SignedContract, User } from "@/lib/types";
 import { uploadFile } from "@/lib/upload-utils";
-import { addCompany, updateCompany } from "@/services/company-service";
+import { addCompany, updateCompany, getSimilarCompanies } from "@/services/company-service";
 import { deleteFile } from "@/services/storage-service";
 import { countries } from "@/lib/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -157,6 +157,9 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
   const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
   const schema = React.useMemo(() => getCompanyFormSchema(isAdmin), [isAdmin]);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [similarCompanies, setSimilarCompanies] = React.useState<any[]>([]);
+  const [isSimilarLoading, setIsSimilarLoading] = React.useState(false);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
 
   const form = useForm<any>({
@@ -345,8 +348,59 @@ export function CompanyForm({ company, onSubmit }: CompanyFormProps) {
                 <CardDescription>General information about the company.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+                {/* ── Similar Company Warning ── Only shown when creating a new company */}
+                {!isEditMode && (isSimilarLoading || similarCompanies.length > 0) && (
+                    <div className={`rounded-lg border p-4 ${similarCompanies.length > 0 ? 'border-amber-500/50 bg-amber-500/10' : 'border-border bg-muted/30'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                            {isSimilarLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            ) : (
+                                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                            )}
+                            <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                                {isSimilarLoading ? 'Checking for similar companies…' : `${similarCompanies.length} similar compan${similarCompanies.length === 1 ? 'y' : 'ies'} already exist`}
+                            </p>
+                        </div>
+                        {!isSimilarLoading && similarCompanies.length > 0 && (
+                            <ul className="space-y-1.5 mt-2">
+                                {similarCompanies.map((c: any) => (
+                                    <li key={c.id} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Building2 className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                                        <span className="font-medium text-foreground">{c.name}</span>
+                                        {c.phone && <span className="text-xs">· {c.phone}</span>}
+                                        {c.city && <span className="text-xs">· {c.city}</span>}
+                                        {c.country && <span className="text-xs">· {c.country}</span>}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {!isSimilarLoading && similarCompanies.length > 0 && (
+                            <p className="text-xs text-muted-foreground mt-3">
+                                If this is the same company, do not create a new one — instead, ask an admin to link you to the existing company profile to avoid duplicates.
+                            </p>
+                        )}
+                    </div>
+                )}
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <FormField control={form.control} name="name" render={({ field }: any) => (<FormItem><FormLabel>Company Name <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="e.g., Safari Ventures" {...field} onChange={(e) => field.onChange(toTitleCase(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="name" render={({ field }: any) => (<FormItem><FormLabel>Company Name <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="e.g., Safari Ventures" {...field} onChange={(e) => {
+                        field.onChange(toTitleCase(e.target.value));
+                        // Trigger similar company search with debounce (only when creating)
+                        if (!isEditMode) {
+                            const val = e.target.value.trim();
+                            if (debounceRef.current) clearTimeout(debounceRef.current);
+                            if (val.length >= 3) {
+                                setIsSimilarLoading(true);
+                                debounceRef.current = setTimeout(async () => {
+                                    const results = await getSimilarCompanies(val);
+                                    setSimilarCompanies(results);
+                                    setIsSimilarLoading(false);
+                                }, 600);
+                            } else {
+                                setSimilarCompanies([]);
+                                setIsSimilarLoading(false);
+                            }
+                        }
+                    }} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="phone" render={({ field }: any) => (<FormItem><FormLabel>Company Phone <span className="text-destructive">*</span></FormLabel><FormControl><Input 
                         placeholder="e.g., +254712345678" 
                         {...field}
