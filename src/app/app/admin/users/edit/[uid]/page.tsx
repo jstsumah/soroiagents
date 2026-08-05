@@ -50,6 +50,7 @@ const getEditFormSchema = (isAdmin: boolean) => {
     remarks: z.string().optional(),
     canViewUsers: z.boolean().default(false),
     hasAllTierAccess: z.boolean().default(false),
+    canAllocatePlatinum: z.boolean().default(false),
   });
 
   if (isAdmin) {
@@ -120,6 +121,7 @@ export default function EditUserPage({ params }: { params: { uid: string } }) {
                     remarks: userData.remarks || '',
                     canViewUsers: userData.canViewUsers || false,
                     hasAllTierAccess: userData.hasAllTierAccess || false,
+                    canAllocatePlatinum: userData.canAllocatePlatinum || false,
                 });
             } catch (error) {
                 console.error("Failed to fetch user:", error);

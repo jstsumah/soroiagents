@@ -56,6 +56,8 @@ export type User = {
   approvedAt?: Date;
   canViewUsers?: boolean;
   hasAllTierAccess?: boolean;
+  canAllocatePlatinum?: boolean;
+  companyHasContracts?: boolean;
 };
 
 export type Resource = {

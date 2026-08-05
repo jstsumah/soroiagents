@@ -7,11 +7,13 @@ import type { Tier, User, Rate } from "@/lib/types";
 import { AgentRateCard } from "./rate-card";
 import { getUser } from "@/services/user-service";
 import { getRates } from "@/services/rate-service";
-import { Loader2, Search, ArrowUp, ArrowDown } from "lucide-react";
+import { getCompany } from "@/services/company-service";
+import { Loader2, Search, ArrowUp, ArrowDown, AlertTriangle, FileText } from "lucide-react";
 import { useAuth } from '@/app/app/app-provider';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type SortKey = 'title' | 'uploaded_at';
 type SortDirection = 'asc' | 'desc';
@@ -23,6 +25,7 @@ export default function AgentRatesPage() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sortKey, setSortKey] = React.useState<SortKey>('uploaded_at');
   const [sortDirection, setSortDirection] = React.useState<SortDirection>('desc');
+  const [hasContracts, setHasContracts] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -30,6 +33,14 @@ export default function AgentRatesPage() {
             try {
                 const rates = await getRates();
                 setAllRates(rates);
+
+                // Check if the agent's company has signed contracts
+                if (currentAgent.companyId) {
+                    const company = await getCompany(currentAgent.companyId);
+                    setHasContracts(company && company.signed_contracts && company.signed_contracts.length > 0);
+                } else {
+                    setHasContracts(false);
+                }
             } catch (error) {
                 console.error("Failed to fetch data:", error);
             } finally {
@@ -42,6 +53,7 @@ export default function AgentRatesPage() {
 
     fetchData();
   }, [currentAgent, authLoading]);
+
   
   const availableRates = React.useMemo(() => {
     if (!currentAgent) return [];
@@ -113,6 +125,17 @@ export default function AgentRatesPage() {
           Download the latest contracted rates available for your tier: <span className="font-semibold text-primary">{currentAgent.tier}</span> and type: <span className="font-semibold text-primary capitalize">{currentAgent.type}</span>.
         </p>
       </div>
+
+      {/* ── Missing Contract Warning Banner ── */}
+      {hasContracts === false && currentAgent.tier !== 'Rack Rates' && (
+        <Alert variant="destructive" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-500">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle className="font-semibold">Signed Contract Missing</AlertTitle>
+          <AlertDescription>
+            Your company does not have a signed contract on file. To ensure continued access to your tiered rates, please contact your account manager to sign and upload your contract.
+          </AlertDescription>
+        </Alert>
+      )}
 
        <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">

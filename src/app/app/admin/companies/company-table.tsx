@@ -20,11 +20,16 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, ArrowUpDown, Trash2 } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, Trash2, AlertTriangle } from "lucide-react";
 import type { Company } from "@/lib/types";
 import { cn, formatWebsiteDisplay, ensureHttps } from "@/lib/utils";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type SortConfig = {
   key: keyof Company | null;
@@ -108,9 +113,24 @@ export function CompanyTable({ companies, onDeleteRequest, onBulkDeleteRequest, 
                   />
                 </TableCell>
                 <TableCell className="font-medium">
-                  <Link href={`/app/admin/companies/view/${company.id}`} className="hover:underline">
-                    {company.name}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/app/admin/companies/view/${company.id}`} className="hover:underline">
+                      {company.name}
+                    </Link>
+                    {(!company.signed_contracts || company.signed_contracts.length === 0) && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-help">
+                            <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="font-semibold">No signed contract on file</p>
+                          <p className="text-xs text-muted-foreground mt-1">Upload a signed contract via the company's edit page to resolve this.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </TableCell>
                  <TableCell>{company.phone || 'N/A'}</TableCell>
                 <TableCell>

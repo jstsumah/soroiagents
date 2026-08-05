@@ -111,6 +111,7 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
 
   const form = useFormContext();
   const companyId = useWatch({ control: form.control, name: "companyId"});
+  const currentRole = useWatch({ control: form.control, name: "role"});
   
   const toTitleCase = (str: string) => {
     if (!str) return '';
@@ -118,11 +119,11 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
   };
   
   const availableTiers = React.useMemo(() => {
-    if (isSuperAdmin) {
+    if (isSuperAdmin || viewingUser?.canAllocatePlatinum) {
       return TIERS;
     }
     return TIERS.filter(t => t !== 'Platinum');
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, viewingUser?.canAllocatePlatinum]);
 
 
   React.useEffect(() => {
@@ -519,6 +520,30 @@ const EditUserFormComponent = ({ user, children, onSubmit }: EditUserFormProps) 
                                             </FormLabel>
                                             <FormDescription>
                                             Allows user to access all resources regardless of their tier.
+                                            </FormDescription>
+                                        </div>
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                            {(isSuperAdmin && currentRole === 'Admin') && (
+                                <FormField
+                                    control={form.control}
+                                    name="canAllocatePlatinum"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>
+                                                Can Allocate Platinum
+                                            </FormLabel>
+                                            <FormDescription>
+                                            Allows this Admin to assign the Platinum tier.
                                             </FormDescription>
                                         </div>
                                         </FormItem>

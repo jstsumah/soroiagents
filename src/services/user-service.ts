@@ -23,7 +23,8 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
         .select(`
             *,
             companies (
-                name
+                name,
+                signed_contracts
             )
         `)
         .eq('id', uid)
@@ -131,10 +132,18 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
         profileData.approved_at = new Date().toISOString();
     }
     
-    // General security: Only admins can change Tier or Role
-    if (data.tier || data.role) {
+    // General security: Only admins can change Tier, Role, or capabilities
+    if (data.tier || data.role || data.canAllocatePlatinum !== undefined) {
         if (!authUser || (authUser.role !== 'Admin' && authUser.role !== 'Super Admin')) {
              return { success: false, error: 'Unauthorized: Only Admins can modify User Tiers or Roles.' };
+        }
+        
+        if (data.canAllocatePlatinum !== undefined && authUser.role !== 'Super Admin') {
+             return { success: false, error: 'Unauthorized: Only Super Admins can modify Platinum allocation privileges.' };
+        }
+
+        if (data.tier === 'Platinum' && authUser.role !== 'Super Admin' && !authUser.canAllocatePlatinum) {
+             return { success: false, error: 'Unauthorized: You do not have permission to allocate the Platinum tier.' };
         }
     }
 
@@ -474,7 +483,8 @@ export const getUsers = async (): Promise<User[]> => {
             .select(`
                 *,
                 companies (
-                    name
+                    name,
+                    signed_contracts
                 )
             `);
         
@@ -525,6 +535,8 @@ const mapProfileToUser = (profile: any): User => ({
     approvedAt: profile.approved_at ? new Date(profile.approved_at) : undefined,
     canViewUsers: profile.can_view_users,
     hasAllTierAccess: profile.has_all_tier_access,
+    canAllocatePlatinum: profile.can_allocate_platinum,
+    companyHasContracts: profile.companies?.signed_contracts ? profile.companies.signed_contracts.length > 0 : false,
 });
 
 const mapUserToProfile = (user: Partial<User>): any => {
@@ -546,6 +558,7 @@ const mapUserToProfile = (user: Partial<User>): any => {
     if (user.passwordResetRequired !== undefined) profile.password_reset_required = user.passwordResetRequired;
     if (user.canViewUsers !== undefined) profile.can_view_users = user.canViewUsers;
     if (user.hasAllTierAccess !== undefined) profile.has_all_tier_access = user.hasAllTierAccess;
+    if (user.canAllocatePlatinum !== undefined) profile.can_allocate_platinum = user.canAllocatePlatinum;
     if (user.last_seen !== undefined) profile.last_seen = user.last_seen.toISOString();
     if (user.approvedBy !== undefined) profile.approved_by = user.approvedBy;
     if (user.approvedAt !== undefined) profile.approved_at = user.approvedAt instanceof Date ? user.approvedAt.toISOString() : user.approvedAt;

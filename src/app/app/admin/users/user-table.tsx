@@ -43,7 +43,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { MoreHorizontal, ArrowUpDown, ChevronLeft, ChevronRight, Columns, Upload, Download, FileDown, Trash2, Calendar as CalendarIcon, X, Eye, Edit } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, ChevronLeft, ChevronRight, Columns, Upload, Download, FileDown, Trash2, Calendar as CalendarIcon, X, Eye, Edit, AlertTriangle } from "lucide-react";
 import type { User, Tier, Status, Role, UserType, Company } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { read, utils, writeFile } from 'xlsx';
@@ -1275,12 +1275,27 @@ export function UserTable({ users: initialUsers, viewingUser }: { users: User[],
                   {columnVisibility.company && (
                     <TableCell className="font-medium">
                       {user.company ? (
-                         <button 
-                           onClick={() => user.companyId && openCompanyDetails(user.companyId)}
-                           className="text-primary hover:underline text-left"
-                         >
-                           {user.company}
-                         </button>
+                         <div className="flex items-center gap-2">
+                           <button 
+                             onClick={() => user.companyId && openCompanyDetails(user.companyId)}
+                             className="text-primary hover:underline text-left"
+                           >
+                             {user.company}
+                           </button>
+                           {user.status === 'active' && user.companyHasContracts === false && (
+                             <Tooltip>
+                               <TooltipTrigger asChild>
+                                 <span className="cursor-help">
+                                   <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                 </span>
+                               </TooltipTrigger>
+                               <TooltipContent side="top" className="max-w-xs">
+                                 <p className="font-semibold">No signed contract on file</p>
+                                 <p className="text-xs text-muted-foreground mt-1">This active user's company has no uploaded signed contracts. Please follow up to get one submitted.</p>
+                               </TooltipContent>
+                             </Tooltip>
+                           )}
+                         </div>
                       ) : (
                         <span className="text-muted-foreground italic">No company linked</span>
                       )}

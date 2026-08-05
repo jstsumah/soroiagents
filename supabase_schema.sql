@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     approved_at TIMESTAMPTZ,
     can_view_users BOOLEAN DEFAULT FALSE,
     has_all_tier_access BOOLEAN DEFAULT FALSE,
+    can_allocate_platinum BOOLEAN DEFAULT FALSE,
     password_reset_required BOOLEAN DEFAULT FALSE,
     last_seen TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
