@@ -133,16 +133,20 @@ export const updateUser = async (uid: string, data: Partial<User>): Promise<{suc
     }
     
     // General security: Only admins can change Tier, Role, or capabilities
-    if (data.tier || data.role || data.canAllocatePlatinum !== undefined) {
+    const isTierChanged = data.tier !== undefined && data.tier !== currentProfile?.tier;
+    const isRoleChanged = data.role !== undefined && data.role !== currentProfile?.role;
+    const isCanAllocatePlatinumChanged = data.canAllocatePlatinum !== undefined && data.canAllocatePlatinum !== currentProfile?.canAllocatePlatinum;
+
+    if (isTierChanged || isRoleChanged || isCanAllocatePlatinumChanged) {
         if (!authUser || (authUser.role !== 'Admin' && authUser.role !== 'Super Admin')) {
              return { success: false, error: 'Unauthorized: Only Admins can modify User Tiers or Roles.' };
         }
         
-        if (data.canAllocatePlatinum !== undefined && authUser.role !== 'Super Admin') {
+        if (isCanAllocatePlatinumChanged && authUser.role !== 'Super Admin') {
              return { success: false, error: 'Unauthorized: Only Super Admins can modify Platinum allocation privileges.' };
         }
 
-        if (data.tier === 'Platinum' && authUser.role !== 'Super Admin' && !authUser.canAllocatePlatinum) {
+        if (isTierChanged && data.tier === 'Platinum' && authUser.role !== 'Super Admin' && !authUser.canAllocatePlatinum) {
              return { success: false, error: 'Unauthorized: You do not have permission to allocate the Platinum tier.' };
         }
     }

@@ -140,7 +140,7 @@ export default function EditUserPage({ params }: { params: { uid: string } }) {
           const payload: Partial<User> & {password?: string} = { ...values };
           console.log('[handleFormSubmit] payload.status =', payload.status);
           if (user) {
-            if (viewingUser?.role !== 'Super Admin' && values.tier === 'Platinum') {
+            if (values.tier === 'Platinum' && values.tier !== user.tier && viewingUser?.role !== 'Super Admin' && !viewingUser?.canAllocatePlatinum) {
                 toast({
                     variant: "destructive",
                     title: "Not Allowed",
