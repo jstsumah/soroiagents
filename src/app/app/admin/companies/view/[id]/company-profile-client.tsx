@@ -8,11 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Edit, FileText, Download, Building, Users, Trash2, PlusCircle, UserPlus, Search, X } from 'lucide-react';
+import { ArrowLeft, Edit, FileText, Download, Building, Users, Trash2, PlusCircle, UserPlus, Search, X, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import type { SignedContract, Company, User } from '@/lib/types';
 import { useAuth } from '@/app/app/app-provider';
 import { getUsers, getUsersByCompanyId, updateUser } from '@/services/user-service';
+import { updateCompany } from '@/services/company-service';
+import { uploadFile } from '@/lib/upload-utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -41,6 +43,7 @@ export function CompanyProfileClient({ company }: { company: Company }) {
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = React.useState(false);
   const [userToRemove, setUserToRemove] = React.useState<User | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [isUploading, setIsUploading] = React.useState(false);
 
   const fetchUsers = React.useCallback(async () => {
     setIsLoadingUsers(true);
@@ -94,6 +97,39 @@ export function CompanyProfileClient({ company }: { company: Company }) {
       }
   };
 
+  const handleUploadContract = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setIsUploading(true);
+      try {
+          const timestamp = Date.now();
+          const filePath = `companies/${company.name}/documents/${timestamp}-${file.name}`;
+          
+          const url = await uploadFile(file, filePath);
+          
+          const newDoc: SignedContract = {
+            name: file.name,
+            url: url,
+            uploaded_at: new Date(),
+          };
+
+          const currentContracts = company.signed_contracts || [];
+          const updatedContracts = [...currentContracts, newDoc];
+
+          const updateResult = await updateCompany(company.id, { signed_contracts: updatedContracts });
+          if (updateResult.error) throw new Error(updateResult.error);
+
+          toast({ title: "Contract Attached", description: `${file.name} has been added to the company profile.` });
+          router.refresh(); // Refresh the page to show the new contract
+      } catch (error: any) {
+          console.error("Failed to upload contract:", error);
+          toast({ variant: 'destructive', title: "Upload Failed", description: error.message || "An error occurred while uploading the contract." });
+      } finally {
+          setIsUploading(false);
+          e.target.value = ''; // Reset input
+      }
+  };
 
   if (!company) {
     return notFound();
@@ -250,7 +286,30 @@ export function CompanyProfileClient({ company }: { company: Company }) {
                 </div>
                 <Separator />
                 <div>
-                    <h3 className="text-lg font-semibold mb-4">Signed Contracts</h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">Signed Contracts</h3>
+                        {canEdit && (
+                            <div>
+                                <input 
+                                    type="file" 
+                                    id="contract-upload" 
+                                    className="hidden" 
+                                    accept=".pdf,image/*"
+                                    onChange={handleUploadContract}
+                                    disabled={isUploading}
+                                />
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => document.getElementById('contract-upload')?.click()}
+                                    disabled={isUploading}
+                                >
+                                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4"/>}
+                                    Attach Contract
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                     {company.signed_contracts && company.signed_contracts.length > 0 ? (
                         <ul className="space-y-3">
                             {company.signed_contracts.map((contract, index) => (
